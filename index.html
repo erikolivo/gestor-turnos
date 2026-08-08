@@ -130,10 +130,85 @@
         .auth-btn.secondary { background:#eff6ff; color:#1d4ed8; }
         .auth-message { min-height:20px; font-size:12px; text-align:center; margin-top:10px; }
         #account-pill { display:none; }
-        .orientation-hint { display:none; }
-        @media (max-width: 700px) and (orientation:portrait) {
-            .orientation-hint { display:flex; position:fixed; inset:0; z-index:9998; background:rgba(15,23,42,.92); color:#fff; align-items:center; justify-content:center; text-align:center; padding:30px; }
-            .orientation-hint > div { max-width:360px; }
+        /* AVISO DE ORIENTACIÓN: informa, pero nunca bloquea el uso en vertical */
+        .orientation-hint {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translate(-50%, -18px);
+            z-index: 100000;
+            width: min(92vw, 430px);
+            padding: 11px 15px;
+            border: 1px solid rgba(147,197,253,.9);
+            border-radius: 14px;
+            background: rgba(255,255,255,.97);
+            color: #1e3a8a;
+            box-shadow: 0 10px 28px rgba(15,23,42,.18);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .22s ease, transform .22s ease;
+        }
+        .orientation-hint.show { opacity: 1; transform: translate(-50%, 0); }
+        .orientation-hint-icon { font-size: 25px; line-height: 1; flex: 0 0 auto; }
+        .orientation-hint strong { display:block; font-size:13px; font-weight:800; }
+        .orientation-hint span { display:block; margin-top:2px; font-size:11px; color:#475569; line-height:1.3; }
+
+        /* MENÚ DE HERRAMIENTAS: siempre navegable en pantallas pequeñas */
+        #tools-dropdown {
+            max-height: min(72vh, 520px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        #tools-dropdown::-webkit-scrollbar { width: 8px; }
+        #tools-dropdown::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:8px; }
+
+        /* Teléfono horizontal: versión compacta, no un escritorio encogido */
+        @media (max-width: 900px) and (orientation: landscape) {
+            #topbar { padding: 6px 10px !important; gap: 8px !important; }
+            #topbar h1 { font-size: 1.15rem !important; line-height: 1.15 !important; }
+            #topbar .flex-col.md\:flex-row { gap: 6px !important; }
+            #favorites-dropzone { min-height: 44px !important; padding: 4px 7px !important; padding-top: 15px !important; }
+            #favorites-dropzone > span { font-size: 8px !important; padding: 2px 7px !important; }
+            #favorites-container { gap: 4px !important; }
+            #btn-tools-toggle { padding: 7px 10px !important; font-size: 12px !important; border-radius: 10px !important; }
+            #tools-dropdown {
+                width: min(285px, 62vw) !important;
+                max-height: calc(100vh - 82px);
+                padding: 7px !important;
+                gap: 5px !important;
+            }
+            #tools-dropdown button, #tools-dropdown label { padding: 7px 9px !important; font-size: 11px !important; }
+            #tools-dropdown hr { margin: 2px 0 !important; }
+            .grid-container { padding: 6px !important; }
+            .grid-container > .bg-white { border-radius: 7px !important; }
+            .grid-container table { min-width: 850px !important; font-size: 11px !important; }
+            .grid-container th { padding: 4px !important; }
+            .grid-container td { padding: 3px !important; }
+            .grid-container .assigned-shift { padding: 3px 2px !important; font-size: 10px !important; }
+            #trash-zone { padding: 6px 9px !important; font-size: 16px !important; margin-left: 4px !important; }
+            #auth-logout { padding: 5px 9px !important; }
+            #account-pill { padding: 4px 8px !important; max-width: 145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        }
+
+        /* Teléfono vertical: funcional, con tabla desplazable horizontalmente */
+        @media (max-width: 700px) and (orientation: portrait) {
+            #topbar { padding: 8px !important; gap: 8px !important; }
+            #topbar h1 { font-size: 1.1rem !important; }
+            #favorites-dropzone { min-height: 48px !important; }
+            #tools-dropdown {
+                position: fixed !important;
+                top: 72px !important;
+                right: 8px !important;
+                width: min(300px, calc(100vw - 16px)) !important;
+                max-height: calc(100vh - 88px) !important;
+            }
+            .grid-container { padding: 5px !important; }
+            .grid-container table { min-width: 900px !important; }
         }
     </style>
 </head>
@@ -164,7 +239,10 @@
             <div id="auth-message" class="auth-message text-gray-500"></div>
         </div>
     </div>
-    <div class="orientation-hint"><div><div style="font-size:52px;margin-bottom:12px">↻</div><h2 style="font-size:22px;font-weight:800">Gira el teléfono</h2><p style="margin-top:8px;opacity:.8">El Gestor de Turnos está optimizado para usarlo en horizontal.</p></div></div>
+    <div id="orientation-hint" class="orientation-hint" role="status" aria-live="polite">
+        <div class="orientation-hint-icon">↔️</div>
+        <div><strong>Mejor en horizontal</strong><span>Gira el teléfono para ver más columnas. Puedes continuar en vertical si lo prefieres.</span></div>
+    </div>
 
     <!-- Controles flotantes Modo Presentación -->
     <div id="presentation-actions" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 z-50 bg-white/90 backdrop-blur p-2 rounded-full shadow-2xl border border-gray-300">
@@ -316,6 +394,55 @@
     </div>
 
     <script>
+        // --- PWA: registro del Service Worker ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.warn('Service Worker no disponible:', err);
+                });
+            });
+        }
+    </script>
+
+    <script>
+        // --- AVISO DE ORIENTACIÓN (NO BLOQUEA EL USO) ---
+        (() => {
+            const hint = document.getElementById('orientation-hint');
+            let hideTimer = null;
+            let lastPortrait = null;
+
+            function isPortraitMobile() {
+                return window.innerWidth <= 700 && window.innerHeight > window.innerWidth;
+            }
+
+            function showOrientationHint() {
+                if (!hint) return;
+                hint.classList.add('show');
+                clearTimeout(hideTimer);
+                hideTimer = setTimeout(() => hint.classList.remove('show'), 3200);
+            }
+
+            function checkOrientation(showOnTransition = true) {
+                const portrait = isPortraitMobile();
+                if (portrait && (lastPortrait === false || lastPortrait === null || showOnTransition)) {
+                    showOrientationHint();
+                }
+                lastPortrait = portrait;
+            }
+
+            window.addEventListener('load', () => {
+                lastPortrait = false;
+                checkOrientation(true);
+            });
+            window.addEventListener('orientationchange', () => setTimeout(() => checkOrientation(true), 150));
+            window.addEventListener('resize', () => {
+                const portrait = isPortraitMobile();
+                if (portrait !== lastPortrait) checkOrientation(true);
+            });
+        })();
+    </script>
+
+    <script>
         // --- SUPABASE AUTH + SINCRONIZACIÓN POR CUENTA ---
         const SUPABASE_URL = 'https://trwwdnttfhrmtfbshygc.supabase.co';
         const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_v8LkLN0wakfpVJZwvYkuAA_mHIOcWgw';
@@ -369,19 +496,12 @@
                 applyCloudPayload(data.payload);
                 cloudHydrating = false;
                 sessionStorage.setItem('cloud_hydrated_for_user', user.id);
+                // Recarga para que el gestor lea los datos de nube desde su inicialización.
                 location.reload();
-                return { reloaded: true, hasCloud: true };
-            }
-            // Si se cambia de cuenta en el mismo dispositivo, jamás reutilizamos
-            // silenciosamente los datos de la cuenta anterior.
-            const lastUser = localStorage.getItem('gestor_last_user_id');
-            if (lastUser && lastUser !== user.id) {
-                cloudHydrating = true;
-                CLOUD_KEYS.forEach(k => localStorage.removeItem(k));
-                cloudHydrating = false;
+                return true;
             }
             sessionStorage.setItem('cloud_hydrated_for_user', user.id);
-            return { reloaded: false, hasCloud: false };
+            return false;
         }
 
         async function pushCloudState() {
@@ -412,25 +532,18 @@
             const hydratedFor = sessionStorage.getItem('cloud_hydrated_for_user');
             if (hydratedFor !== user.id) {
                 try {
-                    const result = await loadCloudState(user);
-                    if (result.reloaded) return;
-                    cloudReady = true;
-                    // Primera entrada de una cuenta: conserva la configuración local
-                    // inicial y crea su copia privada en Supabase.
-                    if (!result.hasCloud) await pushCloudState();
+                    const didReload = await loadCloudState(user);
+                    if (didReload) return;
                 } catch (err) {
                     console.error(err);
                     authMsg('No se pudo consultar tu nube. Puedes continuar con los datos locales.', 'error');
-                    cloudReady = true;
                 }
-            } else {
-                cloudReady = true;
             }
+            cloudReady = true;
             document.body.classList.remove('auth-locked');
             document.getElementById('auth-screen').classList.add('hidden');
             const pill = document.getElementById('account-pill');
             if (pill) { pill.textContent = user.email || 'Usuario'; pill.style.display = 'inline-flex'; }
-            localStorage.setItem('gestor_last_user_id', user.id);
             const logout = document.getElementById('auth-logout');
             if (logout) logout.style.display = 'inline-flex';
         }
@@ -477,7 +590,6 @@
             });
 
             document.getElementById('auth-logout').addEventListener('click', async () => {
-                if (authUser) localStorage.setItem('gestor_last_user_id', authUser.id);
                 await supabaseClient.auth.signOut();
                 sessionStorage.removeItem('cloud_hydrated_for_user');
                 location.reload();
@@ -491,9 +603,6 @@
             });
 
             await startAuth();
-            if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.warn('PWA:', err));
-            }
         });
     </script>
     <script>
