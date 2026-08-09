@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gestor de Turnos Farmacia</title>
-    <meta name="theme-color" content="#1d4ed8">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Gestor de Turnos">
-    <link rel="manifest" href="manifest.json">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
@@ -23,30 +17,36 @@
     <style>
         body { overscroll-behavior-y: none; } 
         
-        /* MODO PRESENTACIÓN: reporte compacto, con los colores reales de cada turno */
+        /* MODO PRESENTACIÓN (REPORTE CORPORATIVO) */
         .presentation-mode { background-color: #ffffff !important; }
         .presentation-mode #topbar, .presentation-mode #btn-toggle-sidebar { display: none !important; }
-        .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 10px 14px 90px !important; background: transparent; box-shadow: none; border: none; overflow: auto !important; }
+        .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 0 !important; background: transparent; box-shadow: none; border: none; overflow: visible !important; }
         .presentation-mode #presentation-header { display: block !important; }
         .presentation-mode #presentation-footer-legend { display: block !important; }
-        .presentation-mode #presentation-header { margin: 0 0 12px !important; padding: 0 2px !important; }
-        .presentation-mode #presentation-header h1 { font-size: 1.45rem !important; line-height: 1.1 !important; margin-bottom: 6px !important; color: #0f3f91 !important; }
-        .presentation-mode #presentation-header > div { border-bottom: 2px solid #1d4ed8 !important; padding-bottom: 6px !important; }
-        .presentation-mode #presentation-header .text-xl { font-size: 1rem !important; }
-        .presentation-mode #presentation-header .text-base { font-size: .78rem !important; }
-        .presentation-mode table { border-collapse: collapse !important; border: 1px solid #64748b !important; background: #fff !important; }
-        .presentation-mode th { border: 1px solid #64748b !important; background: #0756a6 !important; color: #fff !important; padding: 5px 4px !important; }
-        .presentation-mode td { border: 1px solid #94a3b8 !important; background: #fff !important; color: #111827 !important; padding: 2px !important; }
-        .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 12px; }
-        .presentation-mode .assigned-shift { border: 1px solid rgba(15,23,42,.22) !important; box-shadow: none !important; padding: 5px 3px !important; pointer-events: none !important; font-size: 10px !important; border-radius: 2px !important; }
-        .presentation-mode .assigned-shift[data-novedad="true"] { font-style: normal !important; }
-        .presentation-mode .assigned-shift.bg-white { background: #ffffff !important; color: #111827 !important; }
+        .presentation-mode table { border-collapse: collapse !important; border: 2px solid #000; }
+        .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
+        .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
+        .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
+        .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
+
+        /* DOBLE TURNO EN PRESENTACIÓN: representación compacta.
+           La edición conserva los dos botones normales; solo cambia la vista final. */
+        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) {
+            padding: 2px !important;
+        }
+        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) .assigned-shift {
+            padding: 1px 3px !important;
+            margin-bottom: 1px !important;
+            min-height: 0 !important;
+            line-height: 1.05 !important;
+            font-size: 9px !important;
+            border-radius: 3px !important;
+        }
+        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) .assigned-shift > div {
+            padding-left: 1px !important;
+            padding-right: 1px !important;
+        }
         .presentation-mode #presentation-actions { display: flex !important; }
-        .presentation-mode #presentation-footer-legend { margin-top: 12px !important; padding: 8px 0 0 !important; border-top: 1px solid #cbd5e1 !important; }
-        .presentation-mode #presentation-footer-legend h3 { font-size: 12px !important; margin-bottom: 7px !important; }
-        .presentation-mode #legend-items-container { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; gap: 6px !important; }
-        .presentation-mode #legend-items-container > div { padding: 5px !important; background: #fff !important; }
-        .presentation-mode #legend-items-container ul { margin-top: 2px !important; }
 
         /* MODO MONOCROMÁTICO (BLANCO Y NEGRO PARA IMPRESIÓN) */
         .presentation-mode.monochrome-report .assigned-shift { background: #ffffff !important; color: #000000 !important; border: 1px solid #000 !important; }
@@ -112,149 +112,25 @@
         .thick-scrollbar::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 4px solid #f1f5f9; }
         .thick-scrollbar::-webkit-scrollbar-thumb:active { background-color: #475569; }
 
-        /* PALETA: colores claramente diferenciados y legibles en malla + presentación */
-        .bg-pastel-blue { background-color: #2196F3; color: #ffffff; }
-        .bg-pastel-pink { background-color: #EC4899; color: #ffffff; }
-        .bg-pastel-yellow { background-color: #FACC15; color: #422006; }
-        .bg-pastel-purple { background-color: #8B5CF6; color: #ffffff; }
-        .bg-pastel-orange { background-color: #F97316; color: #ffffff; }
-        .bg-pastel-green { background-color: #22C55E; color: #ffffff; }
-        .bg-pastel-gray { background-color: #E5E7EB; color: #111827; }
-        .bg-corp-blue { background-color: #1565C0; color: #ffffff; }
-        .bg-corp-emerald { background-color: #00897B; color: #ffffff; }
-        .bg-corp-amber { background-color: #FF8F00; color: #ffffff; }
-        .bg-corp-rose { background-color: #DC2626; color: #ffffff; }
-        .bg-corp-indigo { background-color: #6366F1; color: #ffffff; }
-        .bg-corp-teal { background-color: #06B6D4; color: #083344; }
-        .bg-corp-slate { background-color: #475569; color: #ffffff; }
+        /* PALETA DE COLORES AMPLIADA */
+        .bg-pastel-blue { background-color: #BFDBFE; color: #1e3a8a; }
+        .bg-pastel-pink { background-color: #FBCFE8; color: #831843; }
+        .bg-pastel-yellow { background-color: #FEF08A; color: #713f12; }
+        .bg-pastel-purple { background-color: #E9D5FF; color: #581c87; }
+        .bg-pastel-orange { background-color: #FED7AA; color: #7c2d12; }
+        .bg-pastel-green { background-color: #BBF7D0; color: #14532d; } 
+        .bg-pastel-gray { background-color: #F3F4F6; color: #1f2937; }
+        .bg-corp-blue { background-color: #2563EB; color: #ffffff; }
+        .bg-corp-emerald { background-color: #059669; color: #ffffff; }
+        .bg-corp-amber { background-color: #D97706; color: #ffffff; }
+        .bg-corp-rose { background-color: #E11D48; color: #ffffff; }
+        .bg-corp-indigo { background-color: #4F46E5; color: #ffffff; }
+        .bg-corp-teal { background-color: #0D9488; color: #ffffff; }
+        .bg-corp-slate { background-color: #334155; color: #ffffff; }
         .bg-corp-purple { background-color: #7C3AED; color: #ffffff; }
-        /* AUTENTICACIÓN / PWA */
-        body.auth-locked > *:not(#auth-screen) { visibility: hidden !important; }
-        #auth-screen { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(135deg,#eff6ff 0%,#f8fafc 55%,#ecfdf5 100%); }
-        #auth-screen.hidden { display: none !important; }
-        .auth-card { width: min(430px, 100%); background: rgba(255,255,255,.96); border: 1px solid #dbeafe; border-radius: 24px; box-shadow: 0 25px 60px rgba(15,23,42,.14); padding: 28px; }
-        .auth-logo { width: 58px; height: 58px; border-radius: 18px; display:flex; align-items:center; justify-content:center; background:#1d4ed8; color:#fff; font-size:28px; margin:0 auto 14px; box-shadow:0 10px 24px rgba(29,78,216,.25); }
-        .auth-field { width:100%; padding:12px 14px; border:1px solid #cbd5e1; border-radius:12px; outline:none; font-size:14px; transition:.15s; }
-        .auth-field:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        .auth-btn { width:100%; padding:12px 14px; border:0; border-radius:12px; font-weight:800; cursor:pointer; transition:.15s; }
-        .auth-btn.primary { background:#2563eb; color:#fff; }
-        .auth-btn.primary:hover { background:#1d4ed8; }
-        .auth-btn.secondary { background:#eff6ff; color:#1d4ed8; }
-        .auth-message { min-height:20px; font-size:12px; text-align:center; margin-top:10px; }
-        #account-pill { display:none; }
-        /* AVISO DE ORIENTACIÓN: informa, pero nunca bloquea el uso en vertical */
-        .orientation-hint {
-            position: fixed;
-            top: 14px;
-            left: 50%;
-            transform: translate(-50%, -18px);
-            z-index: 100000;
-            width: min(92vw, 430px);
-            padding: 11px 15px;
-            border: 1px solid rgba(147,197,253,.9);
-            border-radius: 14px;
-            background: rgba(255,255,255,.97);
-            color: #1e3a8a;
-            box-shadow: 0 10px 28px rgba(15,23,42,.18);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .22s ease, transform .22s ease;
-        }
-        .orientation-hint.show { opacity: 1; transform: translate(-50%, 0); }
-        .orientation-hint-icon { font-size: 25px; line-height: 1; flex: 0 0 auto; }
-        .orientation-hint strong { display:block; font-size:13px; font-weight:800; }
-        .orientation-hint span { display:block; margin-top:2px; font-size:11px; color:#475569; line-height:1.3; }
-
-        /* MENÚ DE HERRAMIENTAS: siempre navegable en pantallas pequeñas */
-        #tools-dropdown {
-            max-height: min(72vh, 520px);
-            overflow-y: auto;
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-        }
-        #tools-dropdown::-webkit-scrollbar { width: 8px; }
-        #tools-dropdown::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:8px; }
-
-        /* Teléfono horizontal: versión compacta, no un escritorio encogido */
-        @media (max-width: 900px) and (orientation: landscape) {
-            #topbar { padding: 6px 10px !important; gap: 8px !important; }
-            #topbar h1 { font-size: 1.15rem !important; line-height: 1.15 !important; }
-            #topbar .flex-col.md\:flex-row { gap: 6px !important; }
-            #favorites-dropzone { min-height: 44px !important; padding: 4px 7px !important; padding-top: 15px !important; }
-            #favorites-dropzone > span { font-size: 8px !important; padding: 2px 7px !important; }
-            #favorites-container { gap: 4px !important; }
-            #btn-tools-toggle { padding: 7px 10px !important; font-size: 12px !important; border-radius: 10px !important; }
-            #tools-dropdown {
-                width: min(285px, 62vw) !important;
-                max-height: calc(100vh - 82px);
-                padding: 7px !important;
-                gap: 5px !important;
-            }
-            #tools-dropdown button, #tools-dropdown label { padding: 7px 9px !important; font-size: 11px !important; }
-            #tools-dropdown hr { margin: 2px 0 !important; }
-            .grid-container { padding: 6px !important; }
-            .grid-container > .bg-white { border-radius: 7px !important; }
-            .grid-container table { min-width: 850px !important; font-size: 11px !important; }
-            .grid-container th { padding: 4px !important; }
-            .grid-container td { padding: 3px !important; }
-            .grid-container .assigned-shift { padding: 3px 2px !important; font-size: 10px !important; }
-            #trash-zone { padding: 6px 9px !important; font-size: 16px !important; margin-left: 4px !important; }
-            #auth-logout { padding: 5px 9px !important; }
-            #account-pill { padding: 4px 8px !important; max-width: 145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        }
-
-        /* Teléfono vertical: funcional, con tabla desplazable horizontalmente */
-        @media (max-width: 700px) and (orientation: portrait) {
-            #topbar { padding: 8px !important; gap: 8px !important; }
-            #topbar h1 { font-size: 1.1rem !important; }
-            #favorites-dropzone { min-height: 48px !important; }
-            #tools-dropdown {
-                position: fixed !important;
-                top: 72px !important;
-                right: 8px !important;
-                width: min(300px, calc(100vw - 16px)) !important;
-                max-height: calc(100vh - 88px) !important;
-            }
-            .grid-container { padding: 5px !important; }
-            .grid-container table { min-width: 900px !important; }
-        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden relative auth-locked">
-    <div id="auth-screen">
-        <div class="auth-card">
-            <div class="auth-logo">📅</div>
-            <h2 class="text-2xl font-black text-center text-blue-900">Gestor de Turnos</h2>
-            <p class="text-sm text-gray-500 text-center mt-1 mb-6">Acceso privado a tu planificación</p>
-
-            <div id="auth-login-view">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Correo electrónico</label>
-                <input id="auth-email" class="auth-field mb-3" type="email" autocomplete="email" placeholder="tu@correo.com">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Contraseña</label>
-                <input id="auth-password" class="auth-field mb-4" type="password" autocomplete="current-password" placeholder="Tu contraseña">
-                <button id="auth-login" class="auth-btn primary">Iniciar sesión</button>
-                <button id="auth-show-signup" class="auth-btn secondary mt-2">Crear una cuenta</button>
-            </div>
-
-            <div id="auth-signup-view" class="hidden">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Correo electrónico</label>
-                <input id="auth-signup-email" class="auth-field mb-3" type="email" autocomplete="email" placeholder="tu@correo.com">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Contraseña</label>
-                <input id="auth-signup-password" class="auth-field mb-4" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
-                <button id="auth-signup" class="auth-btn primary">Crear cuenta</button>
-                <button id="auth-show-login" class="auth-btn secondary mt-2">Ya tengo una cuenta</button>
-            </div>
-            <div id="auth-message" class="auth-message text-gray-500"></div>
-        </div>
-    </div>
-    <div id="orientation-hint" class="orientation-hint" role="status" aria-live="polite">
-        <div class="orientation-hint-icon">↔️</div>
-        <div><strong>Mejor en horizontal</strong><span>Gira el teléfono para ver más columnas. Puedes continuar en vertical si lo prefieres.</span></div>
-    </div>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden relative">
 
     <!-- Controles flotantes Modo Presentación -->
     <div id="presentation-actions" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 z-50 bg-white/90 backdrop-blur p-2 rounded-full shadow-2xl border border-gray-300">
@@ -278,8 +154,6 @@
         
         <div class="flex items-center w-full xl:w-auto shrink-0 justify-between xl:justify-start">
             <h1 class="font-black text-2xl text-blue-900 tracking-tight">Control de Malla</h1>
-            <div id="account-pill" class="text-xs font-bold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-3 py-1"></div>
-            <button id="auth-logout" class="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-full px-3 py-1 hover:bg-red-100 transition" title="Cerrar sesión">Salir</button>
             <div id="trash-zone" class="bg-red-100 text-red-700 border border-red-300 rounded-lg px-4 py-2 text-xl flex items-center shadow-sm shrink-0 ml-4 cursor-pointer" title="Arrastra turnos aquí para borrar">
                 🗑️
             </div>
@@ -302,16 +176,6 @@
                 </button>
 
                 <div id="tools-dropdown" class="hidden absolute right-0 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl p-3 z-50 flex flex-col gap-2 whitespace-nowrap md:w-64">
-                    <button id="btn-search-tools" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-bold text-xs md:text-sm transition shadow-sm border border-blue-200 text-left">
-                        🔎 Buscar Turnos
-                    </button>
-                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
-                        📺 Presentación
-                    </button>
-                    <button id="btn-download" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs md:text-sm transition shadow-sm border border-green-700 text-left">
-                        ⬇️ Descargas / GPF
-                    </button>
-                    <hr class="border-gray-200">
                     <label class="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 font-bold text-xs md:text-sm transition shadow-sm flex items-center border border-purple-200 cursor-pointer">
                         <span class="text-base leading-none mr-1.5">👥</span> Personal (.xlsx)
                         <input type="file" id="upload-staff" accept=".xlsx" class="hidden">
@@ -319,11 +183,19 @@
                     <button id="btn-config" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
                         ⚙️ Configuración
                     </button>
+                    <hr class="border-gray-200">
                     <button id="btn-guardar-semana" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-bold text-xs md:text-sm transition shadow-sm border border-blue-200 text-left">
                         💾 Guardar Semana
                     </button>
                     <button id="btn-historial" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
                         📜 Historial
+                    </button>
+                    <hr class="border-gray-200">
+                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
+                        📺 Presentación
+                    </button>
+                    <button id="btn-download" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs md:text-sm transition shadow-sm border border-green-700 text-left">
+                        ⬇️ Descargar GPF
                     </button>
                     <button id="btn-toggle-sidebar" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-xs md:text-sm transition shadow-sm flex items-center justify-between border border-blue-700">
                         <span><span class="text-lg leading-none mr-1">⋮</span> Turnos GPF</span>
@@ -344,9 +216,13 @@
             <div id="presentation-header" class="hidden mb-6 mt-4 px-4">
                 <h1 class="text-3xl font-black text-center mb-2 uppercase tracking-wide text-gray-900">Malla Operativa Semanal</h1>
                 <div class="flex justify-between items-end border-b-2 border-gray-800 pb-2">
-                    <div class="flex items-center justify-between gap-4 w-full">
+                    <div>
                         <p class="font-black text-xl text-gray-800 uppercase" id="ph-sucursal">SUCURSAL</p>
                         <p class="text-base text-gray-700 font-medium" id="ph-fechas">Rango de fechas</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500 uppercase font-bold">Generado el:</p>
+                        <p class="text-sm font-bold text-gray-800" id="ph-generado">Fecha</p>
                     </div>
                 </div>
             </div>
@@ -404,218 +280,6 @@
     </div>
 
     <script>
-        // --- PWA: registro del Service Worker ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => {
-                    console.warn('Service Worker no disponible:', err);
-                });
-            });
-        }
-    </script>
-
-    <script>
-        // --- AVISO DE ORIENTACIÓN (NO BLOQUEA EL USO) ---
-        (() => {
-            const hint = document.getElementById('orientation-hint');
-            let hideTimer = null;
-            let lastPortrait = null;
-
-            function isPortraitMobile() {
-                return window.innerWidth <= 700 && window.innerHeight > window.innerWidth;
-            }
-
-            function showOrientationHint() {
-                if (!hint) return;
-                hint.classList.add('show');
-                clearTimeout(hideTimer);
-                hideTimer = setTimeout(() => hint.classList.remove('show'), 3200);
-            }
-
-            function checkOrientation(showOnTransition = true) {
-                const portrait = isPortraitMobile();
-                if (portrait && (lastPortrait === false || lastPortrait === null || showOnTransition)) {
-                    showOrientationHint();
-                }
-                lastPortrait = portrait;
-            }
-
-            window.addEventListener('load', () => {
-                lastPortrait = false;
-                checkOrientation(true);
-            });
-            window.addEventListener('orientationchange', () => setTimeout(() => checkOrientation(true), 150));
-            window.addEventListener('resize', () => {
-                const portrait = isPortraitMobile();
-                if (portrait !== lastPortrait) checkOrientation(true);
-            });
-        })();
-    </script>
-
-    <script>
-        // --- SUPABASE AUTH + SINCRONIZACIÓN POR CUENTA ---
-        const SUPABASE_URL = 'https://trwwdnttfhrmtfbshygc.supabase.co';
-        const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_v8LkLN0wakfpVJZwvYkuAA_mHIOcWgw';
-        const { createClient } = window.supabase;
-        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-        const CLOUD_TABLE = 'user_app_state';
-        const CLOUD_KEYS = ['farmacia_empleados_v10','farmacia_config_v10','farmacia_historial_v10','favoritos_turnos'];
-        let authUser = null;
-        let cloudReady = false;
-        let cloudHydrating = false;
-        let cloudTimer = null;
-
-        function authMsg(text, kind='normal') {
-            const el = document.getElementById('auth-message');
-            if (!el) return;
-            el.textContent = text || '';
-            el.className = 'auth-message ' + (kind === 'error' ? 'text-red-600' : kind === 'ok' ? 'text-emerald-600' : 'text-gray-500');
-        }
-
-        function showAuthView(signup) {
-            document.getElementById('auth-login-view').classList.toggle('hidden', signup);
-            document.getElementById('auth-signup-view').classList.toggle('hidden', !signup);
-            authMsg('');
-        }
-
-        function localPayload() {
-            const payload = {};
-            CLOUD_KEYS.forEach(k => {
-                const value = localStorage.getItem(k);
-                if (value !== null) payload[k] = value;
-            });
-            return payload;
-        }
-
-        function applyCloudPayload(payload) {
-            if (!payload) return;
-            CLOUD_KEYS.forEach(k => {
-                if (Object.prototype.hasOwnProperty.call(payload, k)) localStorage.setItem(k, payload[k]);
-            });
-        }
-
-        async function loadCloudState(user) {
-            const { data, error } = await supabaseClient
-                .from(CLOUD_TABLE)
-                .select('payload, updated_at')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            if (error) throw error;
-            if (data?.payload) {
-                cloudHydrating = true;
-                applyCloudPayload(data.payload);
-                cloudHydrating = false;
-                sessionStorage.setItem('cloud_hydrated_for_user', user.id);
-                // Recarga para que el gestor lea los datos de nube desde su inicialización.
-                location.reload();
-                return true;
-            }
-            sessionStorage.setItem('cloud_hydrated_for_user', user.id);
-            return false;
-        }
-
-        async function pushCloudState() {
-            if (!authUser || !cloudReady || cloudHydrating) return;
-            const { error } = await supabaseClient.from(CLOUD_TABLE).upsert({
-                user_id: authUser.id,
-                payload: localPayload(),
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
-            if (error) console.error('Supabase sync:', error);
-        }
-
-        function queueCloudSync() {
-            if (!authUser || !cloudReady || cloudHydrating) return;
-            clearTimeout(cloudTimer);
-            cloudTimer = setTimeout(pushCloudState, 900);
-        }
-
-        // Intercepta los guardados locales del gestor para sincronizar la copia de este usuario.
-        const originalSetItem = Storage.prototype.setItem;
-        Storage.prototype.setItem = function(key, value) {
-            originalSetItem.call(this, key, value);
-            if (this === localStorage && CLOUD_KEYS.includes(key)) queueCloudSync();
-        };
-
-        async function enterApp(user) {
-            authUser = user;
-            const hydratedFor = sessionStorage.getItem('cloud_hydrated_for_user');
-            if (hydratedFor !== user.id) {
-                try {
-                    const didReload = await loadCloudState(user);
-                    if (didReload) return;
-                } catch (err) {
-                    console.error(err);
-                    authMsg('No se pudo consultar tu nube. Puedes continuar con los datos locales.', 'error');
-                }
-            }
-            cloudReady = true;
-            document.body.classList.remove('auth-locked');
-            document.getElementById('auth-screen').classList.add('hidden');
-            const pill = document.getElementById('account-pill');
-            if (pill) { pill.textContent = user.email || 'Usuario'; pill.style.display = 'inline-flex'; }
-            const logout = document.getElementById('auth-logout');
-            if (logout) logout.style.display = 'inline-flex';
-        }
-
-        async function startAuth() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session?.user) {
-                await enterApp(session.user);
-            } else {
-                document.body.classList.add('auth-locked');
-                document.getElementById('auth-screen').classList.remove('hidden');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('auth-show-signup').addEventListener('click', () => showAuthView(true));
-            document.getElementById('auth-show-login').addEventListener('click', () => showAuthView(false));
-
-            document.getElementById('auth-login').addEventListener('click', async () => {
-                const email = document.getElementById('auth-email').value.trim();
-                const password = document.getElementById('auth-password').value;
-                if (!email || !password) return authMsg('Escribe correo y contraseña.', 'error');
-                authMsg('Iniciando sesión...');
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) return authMsg(error.message, 'error');
-                authMsg('Acceso correcto.', 'ok');
-                await enterApp(data.user);
-            });
-
-            document.getElementById('auth-signup').addEventListener('click', async () => {
-                const email = document.getElementById('auth-signup-email').value.trim();
-                const password = document.getElementById('auth-signup-password').value;
-                if (!email || !password) return authMsg('Escribe correo y contraseña.', 'error');
-                if (password.length < 6) return authMsg('La contraseña debe tener al menos 6 caracteres.', 'error');
-                authMsg('Creando cuenta...');
-                const { data, error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) return authMsg(error.message, 'error');
-                if (data.session?.user) {
-                    authMsg('Cuenta creada.', 'ok');
-                    await enterApp(data.session.user);
-                } else {
-                    authMsg('Cuenta creada. Revisa tu correo para confirmar la cuenta y luego inicia sesión.', 'ok');
-                }
-            });
-
-            document.getElementById('auth-logout').addEventListener('click', async () => {
-                await supabaseClient.auth.signOut();
-                sessionStorage.removeItem('cloud_hydrated_for_user');
-                location.reload();
-            });
-
-            supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_OUT') {
-                    authUser = null; cloudReady = false;
-                    sessionStorage.removeItem('cloud_hydrated_for_user');
-                }
-            });
-
-            await startAuth();
-        });
-    </script>
-    <script>
         const b64Template = "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";
         const turnosDB = [{"codigo": "", "desc": "LIBRE"}, {"codigo": "", "desc": "VACACIONES"}, {"codigo": "", "desc": "PERMISO MÉDICO"}, {"codigo": "9999", "desc": "TURNO DELTA 9999"}, {"codigo": "10455", "desc": "00:00 a 04:00 SHIFT"}, {"codigo": "10611", "desc": "07:00 a 14:00"}, {"codigo": "10713", "desc": "07:00 a 14:00 SHIFT"}, {"codigo": "10536", "desc": "00:00 a 08:00"}, {"codigo": "10410", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10479", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10505", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10510", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10517", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10522", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10527", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10531", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10539", "desc": "01:00 a 07:00 SHIFT"}, {"codigo": "10544", "desc": "01:00 a 07:00 SHIFT_"}, {"codigo": "10138", "desc": "05:00 a 13:30 SHIFT_"}, {"codigo": "10289", "desc": "05:00 a 13:00 TUKUNA"}, {"codigo": "10181", "desc": "06:00 a 14:30 SHIFT"}, {"codigo": "10192", "desc": "06:00 a 10:00 SHIFT_"}, {"codigo": "10193", "desc": "06:00 a 10:30 SHIFT_"}, {"codigo": "10219", "desc": "06:00 a 11:00 SHIFT_"}, {"codigo": "10405", "desc": "06:00 a 12:00 SHIFT_"}, {"codigo": "10565", "desc": "06:00 a 14:30 SHIFT_"}, {"codigo": "10567", "desc": "06:00 a 14:00 SHIFT"}, {"codigo": "10572", "desc": "06:00 a 12:30 SHIFT"}, {"codigo": "10579", "desc": "06:00 a 12:30 SHIFT_"}, {"codigo": "10589", "desc": "06:00 a 08:00 SHIFT"}, {"codigo": "10591", "desc": "06:00 a 14:00 SHIFT_"}, {"codigo": "290", "desc": "06:30 A 12:30 LACTANCIA"}, {"codigo": "10211", "desc": "06:30 a 15:00 SHIFT_"}, {"codigo": "10412", "desc": "06:30 a 14:30 SHIFT"}, {"codigo": "10476", "desc": "06:30 a 14:30 SHIFT"}, {"codigo": "10566", "desc": "06:30 a 10:30 SHIFT_"}, {"codigo": "10583", "desc": "06:30 a 14:30 SHIFT_"}, {"codigo": "10630", "desc": "06:30 a 13:00 SHIFT_"}, {"codigo": "10635", "desc": "06:30 a 12:00"}, {"codigo": "10640", "desc": "06:30 a 11:30 SHIFT_"}, {"codigo": "10658", "desc": "06:30 a 11:00 SHIFT_"}, {"codigo": "10706", "desc": "06:30 a 12:00 SHIFT_"}, {"codigo": "10710", "desc": "06:30 a 12:30 SHIFT_"}, {"codigo": "248", "desc": "07:00 A 13:00 LACTANCIA"}, {"codigo": "10073", "desc": "07:00 a 15:30 SHIFT 10073"}, {"codigo": "10099", "desc": "07:00 a 12:00 SHIFT_"}, {"codigo": "10155", "desc": "07:00 a 11:30 SHIFT_"}, {"codigo": "10157", "desc": "07:00 a 13:30 SHIFT"}, {"codigo": "10169", "desc": "07:00 a 15:00 SHIFT"}, {"codigo": "10217", "desc": "07:00 a 11:00 SHIFT_"}, {"codigo": "10274", "desc": "07:00 a 11:45 SHIFT_"}, {"codigo": "10276", "desc": "07:00 a 10:00 SHIFT_"}, {"codigo": "10295", "desc": "07:00 a 10:30 SHIFT_"}, {"codigo": "10303", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10309", "desc": "07:00 a 13:00 SHIFT"}, {"codigo": "10333", "desc": "07:00 a 11:15 SHIFT_"}, {"codigo": "10347", "desc": "07:00 a 10:15 SHIFT_"}, {"codigo": "10389", "desc": "07:00 a 10:45 SHIFT_"}, {"codigo": "10415", "desc": "07:00 a 13:00 SHIFT_"}, {"codigo": "10416", "desc": "07:00 a 15:00 SHIFT_"}, {"codigo": "10420", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10423", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10426", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10434", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10436", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10450", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10459", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10466", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10469", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10480", "desc": "07:00 a 13:30 SHIFT_"}, {"codigo": "10482", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10577", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10590", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10595", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10605", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10639", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10662", "desc": "07:00 a 15:30 SHIFT"}, {"codigo": "10665", "desc": "07:00 a 12:00 SHIFT"}, {"codigo": "10666", "desc": "07:00 a 11:00 SHIFT"}, {"codigo": "10668", "desc": "07:00 a 15:30 SHIFT_"}, {"codigo": "10677", "desc": "07:00 a 15:30 SHIFT P"}, {"codigo": "10690", "desc": "07:00 a 12:30 SHIFT_"}, {"codigo": "10724", "desc": "07:00 a 14:00 SHIFT_"}, {"codigo": "10728", "desc": "07:00 a 13:00 - SHIFT"}, {"codigo": "10730", "desc": "07:00 a 13:00 - SHIFT"}, {"codigo": "10062", "desc": "07:30 a 16:00 SHIFT"}, {"codigo": "10079", "desc": "07:30 a 12:30 SHIFT_"}, {"codigo": "10195", "desc": "07:30 a 11:30 SHIFT_"}, {"codigo": "10212", "desc": "07:30 a 12:00 SHIFT_"}, {"codigo": "10228", "desc": "07:30 a 15:30 SHIFT_"}, {"codigo": "10232", "desc": "07:30 a 14:00 SHIFT"}, {"codigo": "10267", "desc": "07:30 a 11:00 SHIFT_"}, {"codigo": "10272", "desc": "07:30 a 10:30 SHIFT_"}, {"codigo": "10297", "desc": "07:30 a 16:00 SHIFT"}, {"codigo": "10378", "desc": "07:30 a 12:15 SHIFT_"}, {"codigo": "10386", "desc": "07:30 a 11:15 SHIFT_"}, {"codigo": "10394", "desc": "07:30 a 10:45 SHIFT_"}, {"codigo": "10409", "desc": "07:30 a 13:30 SHIFT"}, {"codigo": "10431", "desc": "07:30 a 16:00 SHIFT"}, {"codigo": "10438", "desc": "07:30 a 13:30 SHIFT"}, {"codigo": "10443", "desc": "07:30 a 14:00 SHIFT"}, {"codigo": "10452", "desc": "07:30 a 16:00 SHIFT_"}, {"codigo": "10464", "desc": "07:30 a 13:00 SHIFT_"}, {"codigo": "10587", "desc": "07:30 a 14:00 SHIFT_"}, {"codigo": "10607", "desc": "07:30 a 13:30 SHIFT"}, {"codigo": "10613", "desc": "07:30 a 13:30 LACTANCIA"}, {"codigo": "10624", "desc": "07:30 a 13:00 - 18:30 a 21:00"}, {"codigo": "10659", "desc": "07:30 a 12:30 SHIFT"}, {"codigo": "10675", "desc": "07:30 a 14:30 SHIFT_"}, {"codigo": "10678", "desc": "07:30 a 13:30 SHIFT_"}, {"codigo": "184", "desc": "08:00 A 14:00 LACTANCIA"}, {"codigo": "10058", "desc": "08:00 a 16:30 SHIFT"}, {"codigo": "10066", "desc": "08:00 a 12:00 SHIFT_"}, {"codigo": "10070", "desc": "08:00 a 13:00 SHIFT"}, {"codigo": "10083", "desc": "08:00 a 14:00 SHIFT"}, {"codigo": "10096", "desc": "08:00 a 14:30 SHIFT"}, {"codigo": "10129", "desc": "08:00 a 12:45 SHIFT_"}, {"codigo": "10132", "desc": "08:00 a 16:00 SHIFT"}, {"codigo": "10133", "desc": "08:00 a 12:30 SHIFT_"}, {"codigo": "10148", "desc": "08:00 a 11:00 SHIFT_"}, {"codigo": "10180", "desc": "08:00 a 15:00 SHIFT_"}, {"codigo": "10236", "desc": "08:00 a 11:30 SHIFT_"}, {"codigo": "10316", "desc": "08:00 a 11:45 SHIFT_"}, {"codigo": "10318", "desc": "08:00 a 12:15 SHIFT_"}, {"codigo": "10322", "desc": "08:00 a 11:15 SHIFT_"}, {"codigo": "10402", "desc": "08:00 a 13:30 SHIFT_"}, {"codigo": "10411", "desc": "08:00 a 14:00 SHIFT_"}, {"codigo": "10421", "desc": "08:00 a 13:00 SHIFT_"}, {"codigo": "10429", "desc": "08:00 a 16:00 SHIFT_"}, {"codigo": "10439", "desc": "08:00 a 16:30 SHIFT"}, {"codigo": "10441", "desc": "08:00 a 14:30 SHIFT"}, {"codigo": "10451", "desc": "08:00 a 16:30 SHIFT"}, {"codigo": "10458", "desc": "08:00 a 16:30 SHIFT_"}, {"codigo": "10592", "desc": "08:00 a 14:30 SHIFT_"}, {"codigo": "10604", "desc": "08:00 a 10:00 SHIFT"}, {"codigo": "10642", "desc": "08:00 a 16:00 SHIFT"}, {"codigo": "10646", "desc": "08:00 a 10:00 SHIFT"}, {"codigo": "10648", "desc": "08:00 a 10:00 SHIFT"}, {"codigo": "10716", "desc": "08:00 a 14:00 SHIFT"}, {"codigo": "354", "desc": "08:30 A 14:30 LACTANCIA"}, {"codigo": "10089", "desc": "08:30 a 13:30 SHIFT_"}, {"codigo": "10095", "desc": "08:30 a 17:00 SHIFT_"}, {"codigo": "10108", "desc": "08:30 a 12:30 SHIFT_"}, {"codigo": "10141", "desc": "08:30 a 15:00 SHIFT_"}, {"codigo": "10184", "desc": "08:30 a 13:00 SHIFT_"}, {"codigo": "10223", "desc": "08:30 a 16:30 SHIFT_"}, {"codigo": "10238", "desc": "08:30 a 11:30 SHIFT_"}, {"codigo": "10244", "desc": "08:30 a 12:00 SHIFT_"}, {"codigo": "10320", "desc": "08:30 a 11:45 SHIFT_"}, {"codigo": "10335", "desc": "08:30 a 14:30 SHIFT"}, {"codigo": "10336", "desc": "08:30 a 13:15 SHIFT_"}, {"codigo": "10366", "desc": "08:30 a 12:15 SHIFT_"}, {"codigo": "10382", "desc": "08:30 a 12:45 SHIFT_"}, {"codigo": "10625", "desc": "08:30 a 14:30 SHIFT_"}, {"codigo": "10638", "desc": "08:30 A 14:30 LACTANCIA"}, {"codigo": "10686", "desc": "08:30 a 14:00 SHIFT_"}, {"codigo": "185", "desc": "09:00 A 15:00 LACTANCIA"}, {"codigo": "605", "desc": "09:00 a 15:30 FERIADO SHIFT"}, {"codigo": "10065", "desc": "09:00 a 17:30 SHIFT_"}, {"codigo": "10068", "desc": "09:00 a 14:00 SHIFT_"}, {"codigo": "10081", "desc": "09:00 a 13:00 SHIFT_"}, {"codigo": "10113", "desc": "09:00 a 17:00 SHIFT_"}, {"codigo": "10117", "desc": "09:00 a 15:30 SHIFT"}, {"codigo": "10182", "desc": "09:00 a 13:30 SHIFT_"}, {"codigo": "10199", "desc": "09:00 a 15:00 SHIFT"}, {"codigo": "10253", "desc": "09:00 a 12:00 SHIFT_"}, {"codigo": "10257", "desc": "09:00 a 12:30 SHIFT_"}, {"codigo": "10312", "desc": "09:00 a 13:45 SHIFT_"}, {"codigo": "10326", "desc": "09:00 a 13:15 SHIFT_"}, {"codigo": "10357", "desc": "09:00 a 12:15 SHIFT_"}, {"codigo": "10380", "desc": "09:00 a 12:45 SHIFT_"}, {"codigo": "10529", "desc": "09:00 a 15:00 SHIFT_"}, {"codigo": "10598", "desc": "09:00 a 15:30 SHIFT_"}, {"codigo": "10629", "desc": "09:00 a 16:00 SHIFT_"}, {"codigo": "10671", "desc": "09:00 a 11:00"}, {"codigo": "10695", "desc": "09:00 a 14:30 SHIFT_"}, {"codigo": "10702", "desc": "09:00 a 17:00 SHIFT-"}, {"codigo": "10703", "desc": "09:00 a 17:00 SHIFT"}, {"codigo": "10715", "desc": "09:00 a 12:00 SHIFT"}, {"codigo": "271", "desc": "09:30 A 15:30 LACTANCIA"}, {"codigo": "292", "desc": "09:30 a 14:30 LACTANCIA CC"}, {"codigo": "10059", "desc": "09:30 a 18:00 SHIFT_"}, {"codigo": "10063", "desc": "09:30 a 13:30 SHIFT_"}, {"codigo": "10084", "desc": "09:30 a 14:30 SHIFT_"}, {"codigo": "10114", "desc": "09:30 a 17:30 SHIFT_"}, {"codigo": "10118", "desc": "09:30 a 16:00 SHIFT_"}, {"codigo": "10186", "desc": "09:30 a 14:00 SHIFT_"}, {"codigo": "10242", "desc": "09:30 a 12:30 SHIFT_"}, {"codigo": "10262", "desc": "09:30 a 13:00 SHIFT_"}, {"codigo": "10324", "desc": "09:30 a 13:45 SHIFT_"}, {"codigo": "10329", "desc": "09:30 a 14:15 SHIFT_"}, {"codigo": "10355", "desc": "09:30 a 12:45 SHIFT_"}, {"codigo": "10364", "desc": "09:30 a 13:15 SHIFT_"}, {"codigo": "10399", "desc": "09:30 a 15:30 SHIFT_"}, {"codigo": "10467", "desc": "09:30 a 15:00 SHIFT_"}, {"codigo": "10609", "desc": "09:30 a 12:00 SHIFT_"}, {"codigo": "10654", "desc": "09:30 a 16:30 SHIFT_"}, {"codigo": "186", "desc": "10:00 A 16:00 LACTANCIA"}, {"codigo": "10091", "desc": "10:00 a 18:30 SHIFT"}, {"codigo": "10104", "desc": "10:00 a 14:00 SHIFT"}, {"codigo": "10106", "desc": "10:00 a 15:00 SHIFT_"}, {"codigo": "10120", "desc": "10:00 a 18:00 SHIFT_"}, {"codigo": "10121", "desc": "10:00 a 16:30 SHIFT"}, {"codigo": "10127", "desc": "10:00 a 13:00 SHIFT_"}, {"codigo": "10142", "desc": "10:00 a 14:30 SHIFT"}, {"codigo": "10171", "desc": "10:00 a 16:00 SHIFT_"}, {"codigo": "10240", "desc": "10:00 a 13:30 SHIFT_"}, {"codigo": "10281", "desc": "10:00 a 13:45 SHIFT_"}, {"codigo": "10328", "desc": "10:00 a 13:15 SHIFT_"}, {"codigo": "10341", "desc": "10:00 a 14:45 SHIFT_"}, {"codigo": "10368", "desc": "10:00 a 14:15 SHIFT_"}, {"codigo": "10427", "desc": "10:00 a 16:30 SHIFT"}, {"codigo": "10457", "desc": "10:00 a 14:00 SHIFT_"}, {"codigo": "10471", "desc": "10:00 a 16:30 SHIFT"}, {"codigo": "10514", "desc": "10:00 a 16:30 SHIFT_"}, {"codigo": "10586", "desc": "10:00 a 18:30 SHIFT"}, {"codigo": "10644", "desc": "10:00 a 17:00 SHIFT_"}, {"codigo": "10657", "desc": "10:00 a 18:30 SHIFT_"}, {"codigo": "10661", "desc": "10:00 a 14:30 SHIFT_"}, {"codigo": "10679", "desc": "10:00 a 12:00 SHIFT"}, {"codigo": "10682", "desc": "10:00 a 15:30 SHIFT_"}, {"codigo": "10060", "desc": "10:30 a 19:00 SHIFT_"}, {"codigo": "10093", "desc": "10:30 a 14:30 SHIFT_"}, {"codigo": "10139", "desc": "10:30 a 15:30 SHIFT_"}, {"codigo": "10178", "desc": "10:30 a 17:00 SHIFT_"}, {"codigo": "10197", "desc": "10:30 a 15:00 SHIFT_"}, {"codigo": "10255", "desc": "10:30 a 18:30 SHIFT_"}, {"codigo": "10256", "desc": "10:30 a 14:00 SHIFT_"}, {"codigo": "10259", "desc": "10:30 a 13:30 SHIFT_"}, {"codigo": "10279", "desc": "10:30 a 13:00 SHIFT_"}, {"codigo": "10343", "desc": "10:30 a 13:45 SHIFT_"}, {"codigo": "10360", "desc": "10:30 a 15:15 SHIFT_"}, {"codigo": "10376", "desc": "10:30 a 14:15 SHIFT_"}, {"codigo": "10398", "desc": "10:30 a 16:30 SHIFT_"}, {"codigo": "10400", "desc": "10:30 a 16:00 SHIFT_"}, {"codigo": "187", "desc": "11:00 A 17:00 LACTANCIA"}, {"codigo": "606", "desc": "11:00 a 17:00 FERIADO SHIFT"}, {"codigo": "10061", "desc": "11:00 a 19:30 SHIFT_"}, {"codigo": "10075", "desc": "11:00 a 15:00 SHIFT_"}, {"codigo": "10077", "desc": "11:00 a 16:00 SHIFT_"}, {"codigo": "10112", "desc": "11:00 a 19:00 SHIFT_"}, {"codigo": "10144", "desc": "11:00 a 14:30 SHIFT_"}, {"codigo": "10149", "desc": "11:00 a 15:30 SHIFT_"}, {"codigo": "10153", "desc": "11:00 a 17:30 SHIFT_"}, {"codigo": "10221", "desc": "11:00 a 14:00 SHIFT_"}, {"codigo": "10235", "desc": "11:00 a 17:00 SHIFT_"}, {"codigo": "10314", "desc": "11:00 a 14:15 SHIFT_"}, {"codigo": "10331", "desc": "11:00 a 14:45 SHIFT_"}, {"codigo": "10345", "desc": "11:00 a 15:45 SHIFT_"}, {"codigo": "10374", "desc": "11:00 a 15:15 SHIFT_"}, {"codigo": "10608", "desc": "11:00 a 13:00 SHIFT_"}, {"codigo": "10684", "desc": "11:00 a 16:30 SHIFT_"}, {"codigo": "10732", "desc": "11:00 a 18:00 SHIFT_"}, {"codigo": "296", "desc": "11:30 a 21:30 LACTANCIA CC"}, {"codigo": "329", "desc": "11:30 A 16:30 LACTANCIA CC"}, {"codigo": "10074", "desc": "11:30 a 20:00 SHIFT_"}, {"codigo": "10110", "desc": "11:30 a 16:30 SHIFT_"}, {"codigo": "10152", "desc": "11:30 a 18:00 SHIFT"}, {"codigo": "10159", "desc": "11:30 a 15:30 SHIFT_"}, {"codigo": "10207", "desc": "11:30 a 16:00 SHIFT_"}, {"codigo": "10210", "desc": "11:30 a 19:30 SHIFT_"}, {"codigo": "10250", "desc": "11:30 a 14:30 SHIFT_"}, {"codigo": "10269", "desc": "11:30 a 15:00 SHIFT_"}, {"codigo": "10353", "desc": "11:30 a 14:45 SHIFT_"}, {"codigo": "10370", "desc": "11:30 a 15:15 SHIFT_"}, {"codigo": "10372", "desc": "11:30 a 15:45 SHIFT_"}, {"codigo": "10395", "desc": "11:30 a 17:30 SHIFT_"}, {"codigo": "10396", "desc": "11:30 a 16:15 SHIFT_"}, {"codigo": "10442", "desc": "11:30 a 18:00 SHIFT_"}, {"codigo": "10722", "desc": "11:30 a 17:00 SHIFT_"}, {"codigo": "188", "desc": "12:00 a 18:00 LACTANCIA"}, {"codigo": "10097", "desc": "12:00 a 16:00 SHIFT_"}, {"codigo": "10101", "desc": "12:00 a 20:30 SHIFT"}, {"codigo": "10115", "desc": "12:00 a 17:00 SHIFT_"}, {"codigo": "10165", "desc": "12:00 a 18:30 SHIFT_"}, {"codigo": "10172", "desc": "12:00 a 18:00 SHIFT_"}, {"codigo": "10173", "desc": "12:00 a 20:00 SHIFT_"}, {"codigo": "10214", "desc": "12:00 a 16:30 SHIFT_"}, {"codigo": "10246", "desc": "12:00 a 15:00 SHIFT_"}, {"codigo": "10248", "desc": "12:00 a 15:30 SHIFT_"}, {"codigo": "10338", "desc": "12:00 a 15:15 SHIFT_"}, {"codigo": "10349", "desc": "12:00 a 16:15 SHIFT_"}, {"codigo": "10351", "desc": "12:00 a 15:45 SHIFT_"}, {"codigo": "10362", "desc": "12:00 a 16:45 SHIFT_"}, {"codigo": "10447", "desc": "12:00 a 20:30 SHIFT_"}, {"codigo": "10632", "desc": "12:00 a 19:00 SHIFT_"}, {"codigo": "10709", "desc": "12:00 a 17:30 SHIFT_"}, {"codigo": "10348", "desc": "12:15 a 17:00 SHIFT_"}, {"codigo": "340", "desc": "12:30 a 19:00 LACTANCIA"}, {"codigo": "10072", "desc": "12:30 a 21:00 SHIFT_"}, {"codigo": "10131", "desc": "12:30 a 19:00 SHIFT_"}, {"codigo": "10174", "desc": "12:30 a 16:30 SHIFT_"}, {"codigo": "10177", "desc": "12:30 a 20:30 SHIFT_"}, {"codigo": "10194", "desc": "12:30 a 16:00 SHIFT_"}, {"codigo": "10264", "desc": "12:30 a 15:30 SHIFT_"}, {"codigo": "10273", "desc": "12:30 a 17:30 SHIFT_"}, {"codigo": "10296", "desc": "12:30 a 17:00 SHIFT_"}, {"codigo": "10391", "desc": "12:30 a 15:45 SHIFT_"}, {"codigo": "10446", "desc": "12:30 a 18:30 SHIFT_"}, {"codigo": "10699", "desc": "12:30 a 19:30 SHIFT_"}, {"codigo": "10390", "desc": "12:45 a 17:00 SHIFT_"}, {"codigo": "189", "desc": "13:00 a 19:00 LACTANCIA"}, {"codigo": "10103", "desc": "13:00 a 19:30 SHIFT_"}, {"codigo": "10122", "desc": "13:00 a 17:00 SHIFT_"}, {"codigo": "10125", "desc": "13:00 a 21:30 SHIFT_"}, {"codigo": "10146", "desc": "13:00 a 18:00 SHIFT"}, {"codigo": "10167", "desc": "13:00 a 21:00 SHIFT"}, {"codigo": "10220", "desc": "13:00 a 16:00 SHIFT_"}, {"codigo": "10268", "desc": "13:00 a 17:30 SHIFT"}, {"codigo": "10285", "desc": "13:00 a 17:15 SHIFT_"}, {"codigo": "10287", "desc": "13:00 a 19:00 SHIFT_"}, {"codigo": "10302", "desc": "13:00 a 16:30 SHIFT_"}, {"codigo": "10384", "desc": "13:00 a 16:15 SHIFT"}, {"codigo": "10424", "desc": "13:00 a 21:00 SHIFT_"}, {"codigo": "10440", "desc": "13:00 a 18:00 SHIFT_"}, {"codigo": "10599", "desc": "13:00 a 17:30 SHIFT_"}, {"codigo": "10714", "desc": "13:00 a 20:00 SHIFT"}, {"codigo": "10334", "desc": "13:15 a 17:00 SHIFT_"}, {"codigo": "10340", "desc": "13:15 a 18:00 SHIFT_"}, {"codigo": "10387", "desc": "13:15 a 17:30 SHIFT_"}, {"codigo": "10087", "desc": "13:30 a 22:00 SHIFT_"}, {"codigo": "10092", "desc": "13:30 a 20:00 SHIFT_"}, {"codigo": "10156", "desc": "13:30 a 17:00 SHIFT_"}, {"codigo": "10196", "desc": "13:30 a 17:30 SHIFT_"}, {"codigo": "10237", "desc": "13:30 a 18:00 SHIFT_"}, {"codigo": "10239", "desc": "13:30 a 18:30 SHIFT_"}, {"codigo": "10288", "desc": "13:30 a 21:30 SHIFT_"}, {"codigo": "10290", "desc": "13:30 a 16:30 SHIFT"}, {"codigo": "10308", "desc": "13:30 a 19:30 SHIFT_"}, {"codigo": "10600", "desc": "13:30 a 16:30 SHIFT_"}, {"codigo": "10717", "desc": "13:30 a 19:00 SHIFT_"}, {"codigo": "10275", "desc": "13:45 a 17:00 SHIFT_"}, {"codigo": "10317", "desc": "13:45 a 18:00 SHIFT_"}, {"codigo": "10321", "desc": "13:45 a 18:30 SHIFT_"}, {"codigo": "191", "desc": "14:00 A 20:00 LACTANCIA"}, {"codigo": "297", "desc": "14:00 a 24:00 LACTANCIA CC"}, {"codigo": "10067", "desc": "14:00 a 18:00 SHIFT_"}, {"codigo": "10088", "desc": "14:00 a 22:30 SHIFT_"}, {"codigo": "10100", "desc": "14:00 a 17:00 SHIFT"}, {"codigo": "10151", "desc": "14:00 a 20:30 SHIFT_"}, {"codigo": "10176", "desc": "14:00 a 22:00 SHIFT_"}, {"codigo": "10213", "desc": "14:00 a 17:30 SHIFT_"}, {"codigo": "10226", "desc": "14:00 a 20:00 SHIFT_"}, {"codigo": "10245", "desc": "14:00 a 18:30 SHIFT"}, {"codigo": "10261", "desc": "14:00 a 19:00 SHIFT_"}, {"codigo": "10406", "desc": "14:00 a 16:00 SHIFT_"}, {"codigo": "10596", "desc": "14:00 a 18:30 SHIFT_"}, {"codigo": "10610", "desc": "14:00 a 19:30 SHIFT_"}, {"codigo": "10631", "desc": "14:00 a 17:00 SHIFT_"}, {"codigo": "10641", "desc": "14:00 a 17:00 SHIFT"}, {"codigo": "10674", "desc": "14:00 a 21:00 SHIFT_"}, {"codigo": "10719", "desc": "14:00 a 16:30 SHIFT_"}, {"codigo": "10319", "desc": "14:15 a 18:00 SHIFT_"}, {"codigo": "10358", "desc": "14:15 a 19:00 SHIFT_"}, {"codigo": "10367", "desc": "14:15 a 18:30 SHIFT_"}, {"codigo": "10379", "desc": "14:15 a 17:30 SHIFT_"}, {"codigo": "192", "desc": "14:30 A 20:30 LACTANCIA"}, {"codigo": "10080", "desc": "14:30 a 17:30 SHIFT_"}, {"codigo": "10086", "desc": "14:30 a 23:00 SHIFT_"}, {"codigo": "10102", "desc": "14:30 a 21:00 SHIFT_"}, {"codigo": "10109", "desc": "14:30 a 18:30 SHIFT_"}, {"codigo": "10134", "desc": "14:30 a 18:00 SHIFT"}, {"codigo": "10166", "desc": "14:30 a 22:30 SHIFT_"}, {"codigo": "10227", "desc": "14:30 a 20:30 SHIFT_"}, {"codigo": "10243", "desc": "14:30 a 19:30 SHIFT_"}, {"codigo": "10258", "desc": "14:30 a 19:00 SHIFT"}, {"codigo": "10612", "desc": "14:30 a 18:00 SHIFT_"}, {"codigo": "10614", "desc": "14:30 a 19:00 SHIFT_"}, {"codigo": "10652", "desc": "14:30 a 23:00 SHIFT-"}, {"codigo": "10691", "desc": "14:30 a 17:00 SHIFT_"}, {"codigo": "10711", "desc": "14:30 a 16:30 SHIFT_"}, {"codigo": "10723", "desc": "14:30 a 21:30 SHIFT_"}, {"codigo": "10130", "desc": "14:45 a 18:00 SHIFT_"}, {"codigo": "10356", "desc": "14:45 a 19:30 SHIFT_"}, {"codigo": "10381", "desc": "14:45 a 19:00 SHIFT_"}, {"codigo": "246", "desc": "15:00 a 21:00 LACTANCIA"}, {"codigo": "10071", "desc": "15:00 a 18:00 SHIFT"}, {"codigo": "10082", "desc": "15:00 a 19:00 SHIFT_"}, {"codigo": "10128", "desc": "15:00 a 20:00 SHIFT_"}, {"codigo": "10154", "desc": "15:00 a 23:30 SHIFT"}, {"codigo": "10170", "desc": "15:00 a 21:00 SHIFT_"}, {"codigo": "10179", "desc": "15:00 a 21:30 SHIFT_"}, {"codigo": "10185", "desc": "15:00 a 18:30 SHIFT_"}, {"codigo": "10209", "desc": "15:00 a 23:00 SHIFT_"}, {"codigo": "10263", "desc": "15:00 a 19:30 SHIFT"}, {"codigo": "10280", "desc": "15:00 a 20:30 SHIFT_"}, {"codigo": "10445", "desc": "15:00 a 23:30 SHIFT"}, {"codigo": "10465", "desc": "15:00 a 17:30 SHIFT"}, {"codigo": "10537", "desc": "15:00 a 23:30 SHIFT_"}, {"codigo": "10606", "desc": "15:00 a 18:00 SHIFT"}, {"codigo": "10615", "desc": "15:00 a 19:30 SHIFT_"}, {"codigo": "10653", "desc": "15:00 a 17:00 SHIFT_"}, {"codigo": "10676", "desc": "15:00 a 22:00 SHIFT_"}, {"codigo": "10697", "desc": "15:00 a 17:30 SHIFT_"}, {"codigo": "10726", "desc": "15:00 a 18:00 SHIFT_"}, {"codigo": "10729", "desc": "15:00 a 17:00 - SHIFT"}, {"codigo": "10323", "desc": "15:15 a 20:00 SHIFT_"}, {"codigo": "10327", "desc": "15:15 a 19:00 SHIFT_"}, {"codigo": "10337", "desc": "15:15 a 18:30 SHIFT_"}, {"codigo": "10365", "desc": "15:15 a 19:30 SHIFT_"}, {"codigo": "269", "desc": "15:30 A 03:00 INVENTARIOS"}, {"codigo": "10064", "desc": "15:30 a 19:30 SHIFT_"}, {"codigo": "10090", "desc": "15:30 a 18:30 SHIFT_"}, {"codigo": "10124", "desc": "15:30 a 22:00 SHIFT_"}, {"codigo": "10183", "desc": "15:30 a 19:00 SHIFT_"}, {"codigo": "10200", "desc": "15:30 a 24:00 SHIFT_"}, {"codigo": "10233", "desc": "15:30 a 23:30 SHIFT_"}, {"codigo": "10241", "desc": "15:30 a 20:00 SHIFT_"}, {"codigo": "10260", "desc": "15:30 a 20:30 SHIFT_"}, {"codigo": "10403", "desc": "15:30 a 18:00 SHIFT"}, {"codigo": "10437", "desc": "15:30 a 21:30 SHIFT_"}, {"codigo": "10673", "desc": "15:30 a 22:30 SHIFT_"}, {"codigo": "10683", "desc": "15:30 a 18:00 SHIFT_"}, {"codigo": "10696", "desc": "15:30 a 17:30 SHIFT_"}, {"codigo": "10282", "desc": "15:45 a 20:00 SHIFT_"}, {"codigo": "10313", "desc": "15:45 a 19:00 SHIFT_"}, {"codigo": "10325", "desc": "15:45 a 19:30 SHIFT_"}, {"codigo": "10344", "desc": "15:45 a 20:30 SHIFT_"}, {"codigo": "193", "desc": "16:00 A 22:00 LACTANCIA"}, {"codigo": "10069", "desc": "16:00 a 19:00 SHIFT_"}, {"codigo": "10105", "desc": "16:00 a 20:00 SHIFT_"}, {"codigo": "10168", "desc": "16:00 a 22:30 SHIFT_"}, {"codigo": "10187", "desc": "16:00 a 19:30 SHIFT"}, {"codigo": "10222", "desc": "16:00 a 21:00 SHIFT_"}, {"codigo": "10252", "desc": "16:00 a 20:30 SHIFT_"}, {"codigo": "10271", "desc": "16:00 a 00:30 SHIFT"}, {"codigo": "10284", "desc": "16:00 a 18:00 SHIFT"}, {"codigo": "10407", "desc": "16:00 a 22:00 SHIFT_"}, {"codigo": "10456", "desc": "16:00 a 20:00 SHIFT"}, {"codigo": "10547", "desc": "16:00 a 19:30 SHIFT"}, {"codigo": "10553", "desc": "16:00 a 19:30 SHIFT_"}, {"codigo": "10637", "desc": "16:00 a 18:30"}, {"codigo": "10660", "desc": "16:00 a 19:90 SHIFT"}, {"codigo": "10681", "desc": "16:00 a 18:00 SHIFT_"}, {"codigo": "10687", "desc": "16:00 a 18:30 SHIFT_"}, {"codigo": "10725", "desc": "16:00 a 00:00 SHIFT"}, {"codigo": "10315", "desc": "16:15 a 21:00 SHIFT_"}, {"codigo": "10330", "desc": "16:15 a 19:30 SHIFT_"}, {"codigo": "10369", "desc": "16:15 a 20:00 SHIFT_"}, {"codigo": "10377", "desc": "16:15 a 20:30 SHIFT_"}, {"codigo": "293", "desc": "16:30 a 21:30 LACTANCIA CC"}, {"codigo": "10085", "desc": "16:30 a 19:30 SHIFT_"}, {"codigo": "10094", "desc": "16:30 a 20:30 SHIFT_"}, {"codigo": "10119", "desc": "16:30 a 23:00 SHIFT_"}, {"codigo": "10143", "desc": "16:30 a 20:00 SHIFT_"}, {"codigo": "10145", "desc": "16:30 a 21:00 SHIFT_"}, {"codigo": "10251", "desc": "16:30 a 21:30 SHIFT_"}, {"codigo": "10283", "desc": "16:30 a 01:00 SHIFT_"}, {"codigo": "10581", "desc": "16:30 a 00:30"}, {"codigo": "10633", "desc": "16:30 a 00:30 SHIFT_"}, {"codigo": "10636", "desc": "16:30 a 18:00"}, {"codigo": "10669", "desc": "16:30 a 22:30 SHIFT_"}, {"codigo": "10692", "desc": "16:30 a 18:30 SHIFT_"}, {"codigo": "10693", "desc": "16:30 a 19:00 SHIFT_"}, {"codigo": "10704", "desc": "16:30 a 20:30 SHIFT-"}, {"codigo": "10332", "desc": "16:45 a 21:00 SHIFT_"}, {"codigo": "10342", "desc": "16:45 a 20:00 SHIFT_"}, {"codigo": "10354", "desc": "16:45 a 21:30 SHIFT_"}, {"codigo": "10383", "desc": "16:45 a 20:30 SHIFT_"}, {"codigo": "228", "desc": "17:00 A 19:00 JP LACTANCIA"}, {"codigo": "275", "desc": "17:00 a 23:00 LACTANCIA"}, {"codigo": "324", "desc": "17:00 a 22:00 LACTANCIA CC"}, {"codigo": "332", "desc": "17:00 a 23:00 LACTANCIA CC"}, {"codigo": "10076", "desc": "17:00 a 21:00 SHIFT_"}, {"codigo": "10107", "desc": "17:00 a 20:00 SHIFT_"}, {"codigo": "10198", "desc": "17:00 a 20:30 SHIFT_"}, {"codigo": "10216", "desc": "17:00 a 23:30 SHIFT_"}, {"codigo": "10234", "desc": "17:00 a 22:00 SHIFT_"}, {"codigo": "10270", "desc": "17:00 a 21:30 SHIFT_"}, {"codigo": "10277", "desc": "17:00 a 01:00 SHIFT"}, {"codigo": "10293", "desc": "17:00 a 19:00 SHIFT"}, {"codigo": "10449", "desc": "17:00 a 23:00 SHIFT_"}, {"codigo": "10468", "desc": "17:00 a 19:30 SHIFT_"}, {"codigo": "10563", "desc": "17:00 a 01:00 SHIFT_"}, {"codigo": "10568", "desc": "17:00 a 01:30 SHIFT_"}, {"codigo": "10617", "desc": "17:00 a 19:00 SHIFT_"}, {"codigo": "10645", "desc": "17:00 a 00:00 SHIFT"}, {"codigo": "10339", "desc": "17:15 a 22:00 SHIFT_"}, {"codigo": "10361", "desc": "17:15 a 20:30 SHIFT_"}, {"codigo": "10371", "desc": "17:15 a 21:30 SHIFT_"}, {"codigo": "10375", "desc": "17:15 a 21:00 SHIFT_"}, {"codigo": "318", "desc": "17:30 A 23:30 LACTANCIA"}, {"codigo": "10140", "desc": "17:30 a 20:30 SHIFT_"}, {"codigo": "10150", "desc": "17:30 a 21:00 SHIFT_"}, {"codigo": "10160", "desc": "17:30 a 21:30 SHIFT_"}, {"codigo": "10249", "desc": "17:30 a 22:00 SHIFT_"}, {"codigo": "10265", "desc": "17:30 a 22:30 SHIFT_"}, {"codigo": "10454", "desc": "17:30 a 23:30 SHIFT_"}, {"codigo": "10576", "desc": "17:30 a 01:30"}, {"codigo": "10620", "desc": "17:30 a 01:30 SHIFT_"}, {"codigo": "10643", "desc": "17:30 a 19:00 SHIFT_"}, {"codigo": "10651", "desc": "17:30 a 20:00 SHIFT_"}, {"codigo": "10694", "desc": "17:30 a 19:30 SHIFT_"}, {"codigo": "10346", "desc": "17:45 a 21:00 SHIFT_"}, {"codigo": "10352", "desc": "17:45 a 22:00 SHIFT_"}, {"codigo": "10373", "desc": "17:45 a 21:30 SHIFT_"}, {"codigo": "10392", "desc": "17:45 a 22:30 SHIFT_"}, {"codigo": "217", "desc": "18:00 a 02:00 ARCSA"}, {"codigo": "227", "desc": "18:00 A 20:00 JP LACTANCIA"}, {"codigo": "247", "desc": "18:00 a 24:00 LACTANCIA"}, {"codigo": "294", "desc": "18:00 a 23:00 LACTANCIA CC"}, {"codigo": "10078", "desc": "18:00 a 21:00 SHIFT_"}, {"codigo": "10098", "desc": "18:00 a 22:00 SHIFT_"}, {"codigo": "10208", "desc": "18:00 a 21:30 SHIFT_"}, {"codigo": "10247", "desc": "18:00 a 23:00 SHIFT_"}, {"codigo": "10278", "desc": "18:00 a 00:30 SHIFT"}, {"codigo": "10292", "desc": "18:00 a 20:00 SHIFT_"}, {"codigo": "10305", "desc": "18:00 a 22:30 SHIFT_"}, {"codigo": "10401", "desc": "18:00 a 20:30 SHIFT_"}, {"codigo": "10562", "desc": "18:00 a 02:00 SHIFT_"}, {"codigo": "10670", "desc": "18:00 a 23:00 SHIFT"}, {"codigo": "10350", "desc": "18:15 a 22:00 SHIFT_"}, {"codigo": "10385", "desc": "18:15 a 23:00 SHIFT_"}, {"codigo": "10397", "desc": "18:15 a 21:30 SHIFT_"}, {"codigo": "10111", "desc": "18:30 a 21:30 SHIFT_"}, {"codigo": "10175", "desc": "18:30 a 22:30 SHIFT_"}, {"codigo": "10215", "desc": "18:30 a 22:00 SHIFT_"}, {"codigo": "10291", "desc": "18:30 a 23:30 SHIFT_"}, {"codigo": "10299", "desc": "18:30 a 23:00 SHIFT_"}, {"codigo": "10593", "desc": "18:30 a 02:30"}, {"codigo": "10685", "desc": "18:30 a 21:00 SHIFT_"}, {"codigo": "10700", "desc": "18:30 a 20:30 SHIFT_"}, {"codigo": "10363", "desc": "18:45 a 22:00 SHIFT_"}, {"codigo": "244", "desc": "19:00 a 03:00 ARCSA"}, {"codigo": "295", "desc": "19:00 a 24:00 LACTANCIA CC"}, {"codigo": "10116", "desc": "19:00 a 22:00 SHIFT_"}, {"codigo": "10123", "desc": "19:00 a 23:00 SHIFT_"}, {"codigo": "10225", "desc": "19:00 a 03:00 SHIFT"}, {"codigo": "10300", "desc": "19:00 a 22:30 SHIFT_"}, {"codigo": "10408", "desc": "19:00 a 23:30 SHIFT_"}, {"codigo": "10580", "desc": "19:00 a 21:00"}, {"codigo": "10584", "desc": "19:00 a 21:00 SHIFT"}, {"codigo": "10647", "desc": "18:00 a 00:00 SHIFT"}, {"codigo": "10649", "desc": "19:00 a 03:30 SHIFT_"}, {"codigo": "10688", "desc": "19:00 a 21:00 SHIFT_"}, {"codigo": "10707", "desc": "19:00 a 21:30 SHIFT_"}, {"codigo": "10727", "desc": "19:00 a 01:00 LACTANCIA"}, {"codigo": "10286", "desc": "19:15 a 23:00 SHIFT_"}, {"codigo": "10224", "desc": "19:30 a 23:30 SHIFT_"}, {"codigo": "10311", "desc": "19:30 a 23:00 SHIFT_"}, {"codigo": "10359", "desc": "19:30 a 22:30 SHIFT_"}, {"codigo": "10650", "desc": "19:30 a 04:00 SHIFT_"}, {"codigo": "10656", "desc": "19:30 a 23:30 SHIFT"}, {"codigo": "10689", "desc": "19:30 a 22:00 SHIFT_"}, {"codigo": "10701", "desc": "19:30 a 21:30 SHIFT_"}, {"codigo": "270", "desc": "20:00 A 04:00 INVENTARIOS"}, {"codigo": "325", "desc": "20:00 a 01:00 LACTANCIA CC"}, {"codigo": "355", "desc": "20:00 a 22:00 INVENTARIOS"}, {"codigo": "10147", "desc": "20:00 a 23:00 SHIFT"}, {"codigo": "10189", "desc": "20:00 a 04:00 ARCSA"}, {"codigo": "10206", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10266", "desc": "20:00 a 23:30 SHIFT"}, {"codigo": "10294", "desc": "20:00 a 23:00 SHIFT_"}, {"codigo": "10433", "desc": "20:00 a 04:30 SHIFT"}, {"codigo": "10460", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10462", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10473", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10483", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10484", "desc": "20:00 a 22:00 SHIFT_"}, {"codigo": "10490", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10493", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10497", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10501", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10508", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10513", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10520", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10525", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10533", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10541", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10546", "desc": "20:00 a 00:00 SHIFT"}, {"codigo": "10552", "desc": "20:00 a 04:00 SHIFT"}, {"codigo": "10558", "desc": "20:00 a 04:00 SHIFT_"}, {"codigo": "10594", "desc": "20:00 a 23:30 SHIFT"}, {"codigo": "10623", "desc": "20:00 a 01:00 SHIFT"}, {"codigo": "10626", "desc": "20:00 a 04:30 SHIFT_"}, {"codigo": "10655", "desc": "20:00 a 23:30 SHIFT_"}, {"codigo": "10705", "desc": "20:00 a 22:30 SHIFT_"}, {"codigo": "10712", "desc": "20:00 a 01:00 SHIFT"}, {"codigo": "10425", "desc": "20:30 a 04:30 SHIFT"}, {"codigo": "10430", "desc": "20:30 a 23:30 SHIFT"}, {"codigo": "10475", "desc": "20:30 a 23:30 SHIFT_"}, {"codigo": "10571", "desc": "20:30 a 04:30 SHIFT"}, {"codigo": "10573", "desc": "20:30 a 01:30 SHIFT"}, {"codigo": "10602", "desc": "20:30 a 01:30 SHIFT_"}, {"codigo": "10663", "desc": "20:30 a 05:00 SHIFT_"}, {"codigo": "10698", "desc": "20:30 a 22:30 SHIFT_"}, {"codigo": "268", "desc": "21:00 A 05:00 INVENTARIOS"}, {"codigo": "348", "desc": "21:00 A 01:00 JP INVENTARIOS"}, {"codigo": "10205", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10298", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10307", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10310", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10404", "desc": "21:00 a 23:00 SHIFT_"}, {"codigo": "10418", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10435", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10461", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10470", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10472", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10485", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10489", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10492", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10496", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10500", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10504", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10507", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10509", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10512", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10515", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10519", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10524", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10532", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10534", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10540", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10542", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10545", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10548", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10551", "desc": "21:00 a 05:00 SHIFT"}, {"codigo": "10554", "desc": "21:00 a 05:30 SHIFT"}, {"codigo": "10557", "desc": "21:00 a 05:00 SHIFT_"}, {"codigo": "10559", "desc": "21:00 a 05:30 SHIFT_"}, {"codigo": "10574", "desc": "21:00 a 01:30 SHIFT"}, {"codigo": "10601", "desc": "21:00 a 01:30 SHIFT_"}, {"codigo": "10622", "desc": "21:00 a 01:00 SHIFT_"}, {"codigo": "10634", "desc": "21:00 a 00:30 SHIFT_"}, {"codigo": "10667", "desc": "21:00 a 01:00 SHIFT"}, {"codigo": "10680", "desc": "21:00 a 03:00 SHIFT"}, {"codigo": "10718", "desc": "21:00 a 23:30 SHIFT_"}, {"codigo": "10721", "desc": "21:00 a 02:00 SHIFT_"}, {"codigo": "10731", "desc": "21:00 a 03:00 SHIFT_"}, {"codigo": "10304", "desc": "21:30 a 06:00 SHIFT_"}, {"codigo": "10388", "desc": "21:30 a 05:30 SHIFT"}, {"codigo": "10585", "desc": "21:30 a 05:30 SHIFT_"}, {"codigo": "10618", "desc": "21:30 a 01:30 SHIFT_"}, {"codigo": "346", "desc": "22:00 a 06:00 INVENTARIOS"}, {"codigo": "349", "desc": "22:00 A 02:00 JP INVENTARIOS"}, {"codigo": "10203", "desc": "22:00 a 06:30 SHIFT_"}, {"codigo": "10204", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10414", "desc": "22:00 a 04:00 SHIFT"}, {"codigo": "10419", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10422", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10428", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10432", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10444", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10448", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10453", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10463", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10474", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10487", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10491", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10495", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10499", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10503", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10511", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10518", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10523", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10528", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10535", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10543", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10550", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10556", "desc": "22:00 a 06:00 SHIFT"}, {"codigo": "10561", "desc": "22:00 a 06:00 SHIFT_"}, {"codigo": "10569", "desc": "22:00 a 01:30 SHIFT_"}, {"codigo": "10575", "desc": "22:00 a 01:00 SHIFT"}, {"codigo": "10597", "desc": "22:00 a 04:00 SHIFT_"}, {"codigo": "10603", "desc": "22:00 a 01:00 SHIFT_"}, {"codigo": "10621", "desc": "22:00 a 02:00 SHIFT"}, {"codigo": "10720", "desc": "22:00 a 02:00 SHIFT_"}, {"codigo": "10564", "desc": "22:30 a 06:30 SHIFT_"}, {"codigo": "10588", "desc": "22:30 a 04:30"}, {"codigo": "10619", "desc": "22:30 a 01:30 SHIFT_"}, {"codigo": "10627", "desc": "22:30 a 07:00 SHIFT_"}, {"codigo": "347", "desc": "23:00 a 07:00 INVENTARIOS"}, {"codigo": "10202", "desc": "23:00 a 07:30 SHIFT"}, {"codigo": "10301", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10393", "desc": "23:00 a 03:00 SHIFT"}, {"codigo": "10477", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10478", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10481", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10486", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10488", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10494", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10498", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10502", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10506", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10516", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10521", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10526", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10530", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10538", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10549", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10555", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10560", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10570", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10578", "desc": "23:00 a 07:00 SHIFT"}, {"codigo": "10582", "desc": "23:00 a 07:00 SHIFT_"}, {"codigo": "10616", "desc": "23:00 a 05:00 SHIFT_"}, {"codigo": "10664", "desc": "23:00 a 07:30 SHIFT_"}, {"codigo": "10733", "desc": "23:00 a 01:00 SHIFT_"}, {"codigo": "10254", "desc": "23:30 a 07:30 SHIFT_"}, {"codigo": "10413", "desc": "23:30 a 06:00 SHIFT"}, {"codigo": "10417", "desc": "23:30 a 07:30 SHIFT"}, {"codigo": "10628", "desc": "23:30 a 08:00 SHIFT_"}, {"codigo": "10708", "desc": "23:30 a 01:30 SHIFT_"}, {"codigo": "298", "desc": "00:00 a 08:00 SHIFT"}, {"codigo": "10672", "desc": "00:00 a 08:00 Prueba"}];
 
@@ -663,28 +327,12 @@
             if (typeof f === 'string') {
                 const turno = turnosDB.find(t => t.codigo === f || t.desc === f);
                 return {
-                    id: f, codigo: turno ? turno.codigo : f, baseDesc: turno ? turno.desc : f, desc: turno ? turno.desc : f, horasExtras: "0", colorCls: null
+                    id: f, codigo: turno ? turno.codigo : f, baseDesc: turno ? turno.desc : f, desc: turno ? turno.desc : f, horasExtras: "0", colorCls: 'bg-pastel-blue'
                 };
             }
+            if(!f.colorCls) f.colorCls = 'bg-pastel-blue';
             return f;
         });
-
-        // Cada favorito nuevo recibe automáticamente un color que no esté siendo usado por otro favorito.
-        function obtenerSiguienteColorFavorito() {
-            const usados = new Set(favoritos.map(f => f.colorCls).filter(Boolean));
-            const candidatos = listaColoresDisponibles.map(c => c.id);
-            return candidatos.find(c => !usados.has(c)) || candidatos[favoritos.length % candidatos.length];
-        }
-
-        // Migración: los favoritos antiguos que no tenían color reciben colores únicos ahora.
-        let favoritosMigrados = false;
-        favoritos.forEach(f => {
-            if(!f.colorCls) {
-                f.colorCls = obtenerSiguienteColorFavorito();
-                favoritosMigrados = true;
-            }
-        });
-        if(favoritosMigrados) localStorage.setItem('favoritos_turnos', JSON.stringify(favoritos));
 
         let currentTemplateBuffer = null; 
 
@@ -700,14 +348,6 @@
             e.stopPropagation();
             toolsDropdown.classList.toggle('hidden');
             toolsArrow.style.transform = toolsDropdown.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-        });
-
-        document.getElementById('btn-search-tools').addEventListener('click', () => {
-            toolsDropdown.classList.add('hidden');
-            toolsArrow.style.transform = 'rotate(0deg)';
-            sidebar.classList.add('open');
-            overlay.classList.add('open');
-            setTimeout(() => document.getElementById('search-shift')?.focus(), 120);
         });
 
         document.addEventListener('click', (e) => {
@@ -906,15 +546,14 @@
                 const idFav = isNovedad(turno.desc) ? turno.desc : turno.codigo;
                 const isFav = esFavorito(idFav);
                 const starColor = isFav ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500';
-                const favActual = favoritos.find(f => f.id === idFav);
-                let baseColor = favActual?.colorCls || (isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-white');
+                let baseColor = isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-white';
                 
                 const textoVisual = isNovedad(turno.desc) ? turno.desc : limpiarTextoTurno(turno.desc);
 
                 const div = document.createElement('div');
                 div.className = `flex justify-between items-center ${baseColor} border border-gray-200 p-2 rounded shadow-sm group`;
                 div.innerHTML = `
-                    <div class="shift-block text-xs font-medium flex-1 py-1" draggable="true" data-code="${turno.codigo}" data-desc="${turno.desc}" data-color-cls="${baseColor}">
+                    <div class="shift-block text-xs font-medium text-gray-700 flex-1 py-1" draggable="true" data-code="${turno.codigo}" data-desc="${turno.desc}">
                         ${!isNovedad(turno.desc) && turno.codigo ? `<span class="text-gray-400 mr-1">[${turno.codigo}]</span> ` : ''}${textoVisual}
                     </div>
                     <button class="ml-2 ${starColor} transition focus:outline-none text-2xl px-3 py-1" onclick="toggleFavorito('${idFav}')">★</button>
@@ -941,7 +580,7 @@
             } else {
                 const turno = turnosDB.find(t => t.codigo === idFav || t.desc === idFav);
                 if(!turno) return;
-                let cCls = obtenerSiguienteColorFavorito();
+                let cCls = isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-pastel-blue';
                 favoritos.push({
                     id: idFav, codigo: turno.codigo, baseDesc: turno.desc, desc: turno.desc, horasExtras: "0", colorCls: cCls
                 });
@@ -963,7 +602,7 @@
                 Swal.fire({ icon: 'info', title: 'Ya existe', text: 'Este turno extendido ya está en tus Favoritos.', confirmButtonColor: '#10b981' });
                 return;
             }
-            let cCls = obtenerSiguienteColorFavorito();
+            let cCls = turnoExt.colorCls || 'bg-pastel-orange';
             favoritos.push({
                 id, codigo: turnoExt.codigo, baseDesc: turnoExt.baseDesc, desc: turnoExt.desc, horasExtras: turnoExt.horasExtras, colorCls: cCls
             });
@@ -984,7 +623,6 @@
                 const block = document.createElement('div');
                 const textoVisual = isNov ? fav.baseDesc : limpiarTextoTurno(fav.desc);
 
-                if(!fav.colorCls) { fav.colorCls = obtenerSiguienteColorFavorito(); guardarFavoritosStorage(); }
                 block.className = `shift-block px-2 py-1 md:px-3 md:py-1 rounded text-[10px] md:text-xs border border-gray-400 shadow-sm cursor-pointer max-w-max h-max font-bold ${fav.colorCls || 'bg-white'}`;
                 block.draggable = true;
                 block.dataset.favId = fav.id;
@@ -1098,7 +736,7 @@
                 desc: dragSourceElement.dataset.desc,
                 baseDesc: dragSourceElement.dataset.baseDesc || dragSourceElement.dataset.desc,
                 horasExtras: dragSourceElement.dataset.horasExtras || "0",
-                colorCls: dragSourceElement.dataset.colorCls || dragSourceElement.dataset.colorCls || (dragSourceElement.className.match(/bg-(?:pastel|corp)-[a-z0-9-]+/)?.[0] || 'bg-white')
+                colorCls: dragSourceElement.dataset.colorCls || (dragSourceElement.className.match(/bg-[a-z]+-[a-z0-9-]+/)?.[0] || 'bg-white')
             };
             if(isNovedad(draggedData.desc)) draggedData.colorCls = getColorPorNovedad(draggedData.desc);
             
@@ -1161,9 +799,14 @@
                     } else {
                         const idFav = isNovedad(draggedData.desc) ? draggedData.desc : draggedData.codigo;
                         if(idFav && !esFavorito(idFav)) {
+                            let tempFavs = [...favoritos];
                             toggleFavorito(idFav);
-                            // toggleFavorito ya asigna un color base único al nuevo favorito.
-                            renderizarFavoritos();
+                            let favAgregado = favoritos.find(f => f.id === idFav);
+                            if(favAgregado && draggedData.colorCls && !tempFavs.some(f => f.id === idFav)) {
+                                favAgregado.colorCls = draggedData.colorCls;
+                                guardarFavoritosStorage();
+                                renderizarFavoritos();
+                            }
                         }
                     }
                     if (dragSourceCell && typeof dragSourceCell !== 'object' && dragSourceElement) {
@@ -1526,6 +1169,9 @@
             const formatear = d => ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
             document.getElementById('ph-fechas').textContent = `DEL ${formatear(dIni)} AL ${formatear(dFin)}`;
             
+            let hoyStr = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
+            document.getElementById('ph-generado').textContent = hoyStr;
+
             // Escanear colores usados en la malla actual para construir la leyenda dinámica
             construirLeyendaDinamica();
             
