@@ -27,25 +27,21 @@
         .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
         .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
         .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
-        .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
-
-        /* DOBLE TURNO EN PRESENTACIÓN: representación compacta.
-           La edición conserva los dos botones normales; solo cambia la vista final. */
-        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) {
-            padding: 2px !important;
-        }
-        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) .assigned-shift {
+        /* Doble turno compacto solo en Presentación */
+        .presentation-mode .assigned-shift.compact-double-shift {
             padding: 1px 3px !important;
-            margin-bottom: 1px !important;
+            margin: 1px 0 !important;
             min-height: 0 !important;
+            height: auto !important;
             line-height: 1.05 !important;
             font-size: 9px !important;
             border-radius: 3px !important;
         }
-        .presentation-mode .droppable-cell:has(.assigned-shift + .assigned-shift) .assigned-shift > div {
-            padding-left: 1px !important;
-            padding-right: 1px !important;
+        .presentation-mode .compact-double-shift .shift-time {
+            font-size: 9px !important;
+            line-height: 1 !important;
         }
+        .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
         .presentation-mode #presentation-actions { display: flex !important; }
 
         /* MODO MONOCROMÁTICO (BLANCO Y NEGRO PARA IMPRESIÓN) */
@@ -1507,5 +1503,24 @@
             }
         });
     </script>
+
+<script>
+(function () {
+    function compactDoubleShifts() {
+        if (!document.body.classList.contains('presentation-mode')) return;
+        document.querySelectorAll('td').forEach(function (cell) {
+            const shifts = Array.from(cell.querySelectorAll(':scope > .assigned-shift'));
+            shifts.forEach(s => s.classList.remove('compact-double-shift'));
+            if (shifts.length === 2) {
+                shifts.forEach(s => s.classList.add('compact-double-shift'));
+            }
+        });
+    }
+    const observer = new MutationObserver(compactDoubleShifts);
+    observer.observe(document.body, {childList:true, subtree:true, attributes:true});
+    window.addEventListener('load', compactDoubleShifts);
+})();
+</script>
+
 </body>
 </html>

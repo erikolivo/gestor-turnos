@@ -1,21 +1,21 @@
-GESTOR DE TURNOS - PWA PILOTO v4
+GESTOR DE TURNOS - PILOTO PWA + SUPABASE
 
-CAMBIOS DE ESTA VERSION
-- Modo Presentación conserva los colores reales de cada turno.
-- Nueva paleta de colores con diferencias visuales más marcadas.
-- Los favoritos reciben automáticamente un color base único entre los favoritos existentes.
-- Puedes cambiar manualmente el color de cualquier favorito.
-- Al arrastrar un turno de la malla al cajón de Favoritos, el turno se elimina de la malla.
-- Al arrastrar un favorito a la malla, conserva su color asignado.
-- Los colores se conservan al cargar historial y en Modo Presentación.
-- Herramientas: Buscar Turnos, Presentación y Descargas aparecen primero.
-- Modo Presentación ya no muestra fecha/hora de generación.
-- El aviso de orientación sigue siendo informativo y no obliga a usar horizontal.
-- Menú Herramientas con desplazamiento propio en pantallas pequeñas.
+Contenido
+- index.html: aplicación principal
+- manifest.json: configuración PWA
+- sw.js: Service Worker para caché/offline
+- icon-192.svg / icon-512.svg: iconos
+- SUPABASE_SETUP.sql: estructura de nube ya utilizada
 
-PWA
-- Abrir mediante HTTPS (por ejemplo GitHub Pages) para instalar correctamente.
-- Si ya estaba instalada, cerrar/reabrir la PWA después de publicar esta versión para que tome el Service Worker v4.
+IMPORTANTE
+1. Para probar como PWA, NO abras index.html con doble clic (file://).
+2. Usa HTTPS o localhost.
+3. En PC puedes probar con: python -m http.server 8080
+4. Abre http://localhost:8080/ en Chrome.
+5. Para instalarla en Android, publica la carpeta en un hosting HTTPS (por ejemplo GitHub Pages, Netlify o Vercel) y abre esa dirección desde Chrome.
+6. La orientación preferida de la PWA es horizontal; en navegadores que no permitan bloquearla, se muestra un aviso para girar el teléfono.
 
 SUPABASE
-- Mantiene la autenticación y separación de datos por cuenta del piloto anterior.
+- El proyecto y la Publishable Key ya están incorporados en el HTML.
+- La clave usada es una Publishable Key, no una Secret/Service Role Key.
+- La confirmación por correo debe permanecer desactivada para este piloto, tal como se configuró durante la prueba.
