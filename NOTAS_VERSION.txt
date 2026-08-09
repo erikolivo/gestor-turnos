@@ -1,0 +1,5 @@
+EXPORTACION COMPLETA DE PRESENTACION
+- Basada en el HTML original.
+- La descarga PNG toma la cuadrícula completa, no el viewport del teléfono.
+- Incluye encabezado, tabla completa y leyenda cuando están visibles.
+- No cambia la navegación ni la edición de turnos.

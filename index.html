@@ -4,7 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gestor de Turnos Farmacia</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnDownload = document.getElementById('btn-download-image');
+            if (btnDownload) {
+                btnDownload.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    descargarPresentacionCompleta();
+                });
+            }
+        });
+
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -27,20 +39,6 @@
         .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
         .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
         .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
-        /* Doble turno compacto solo en Presentación */
-        .presentation-mode .assigned-shift.compact-double-shift {
-            padding: 1px 3px !important;
-            margin: 1px 0 !important;
-            min-height: 0 !important;
-            height: auto !important;
-            line-height: 1.05 !important;
-            font-size: 9px !important;
-            border-radius: 3px !important;
-        }
-        .presentation-mode .compact-double-shift .shift-time {
-            font-size: 9px !important;
-            line-height: 1 !important;
-        }
         .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
         .presentation-mode #presentation-actions { display: flex !important; }
 
@@ -1151,6 +1149,123 @@
             });
         });
 
+
+        // --- EXPORTACIÓN COMPLETA DE PRESENTACIÓN A PNG ---
+        // La exportación usa el tamaño real de la tabla y no el viewport del teléfono.
+        async function descargarPresentacionCompleta() {
+            const grid = document.getElementById('grid-container') || document.querySelector('.grid-container');
+            const table = document.querySelector('#grid-body')?.closest('table');
+            const header = document.getElementById('presentation-header');
+            const legend = document.getElementById('presentation-footer-legend');
+
+            if (!table) {
+                Swal.fire('No se pudo exportar', 'No se encontró la cuadrícula de presentación.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-download-image');
+            const textoOriginal = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Generando...';
+            }
+
+            try {
+                // Esperar a que el navegador termine de pintar cualquier cambio reciente.
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+                const rectTable = table.getBoundingClientRect();
+                const rectHeader = header && getComputedStyle(header).display !== 'none'
+                    ? header.getBoundingClientRect() : null;
+                const rectLegend = legend && getComputedStyle(legend).display !== 'none'
+                    ? legend.getBoundingClientRect() : null;
+
+                const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+                const padding = 24;
+
+                // Capturamos una copia temporal fuera del viewport.
+                const cloneWrap = document.createElement('div');
+                cloneWrap.style.position = 'fixed';
+                cloneWrap.style.left = '-100000px';
+                cloneWrap.style.top = '0';
+                cloneWrap.style.width = Math.ceil(rectTable.width) + 'px';
+                cloneWrap.style.background = '#ffffff';
+                cloneWrap.style.zIndex = '-1';
+                cloneWrap.style.overflow = 'visible';
+
+                // Copiar encabezado, tabla y leyenda en un documento temporal.
+                const cloneHeader = rectHeader ? header.cloneNode(true) : null;
+                const cloneTable = table.cloneNode(true);
+                const cloneLegend = rectLegend ? legend.cloneNode(true) : null;
+
+                if (cloneHeader) {
+                    cloneHeader.style.display = 'block';
+                    cloneHeader.style.width = '100%';
+                    cloneHeader.style.marginBottom = '12px';
+                }
+
+                cloneTable.style.width = Math.ceil(rectTable.width) + 'px';
+                cloneTable.style.maxWidth = 'none';
+                cloneTable.style.height = 'auto';
+                cloneTable.style.overflow = 'visible';
+                cloneTable.style.transform = 'none';
+
+                if (cloneLegend) {
+                    cloneLegend.style.display = 'block';
+                    cloneLegend.style.width = '100%';
+                    cloneLegend.style.marginTop = '12px';
+                }
+
+                if (cloneHeader) cloneWrap.appendChild(cloneHeader);
+                cloneWrap.appendChild(cloneTable);
+                if (cloneLegend) cloneWrap.appendChild(cloneLegend);
+                document.body.appendChild(cloneWrap);
+
+                // html2canvas ya está disponible en la aplicación; si no lo está, cargarlo.
+                if (typeof html2canvas !== 'function') {
+                    await new Promise((resolve, reject) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+                        s.onload = resolve;
+                        s.onerror = reject;
+                        document.head.appendChild(s);
+                    });
+                }
+
+                // html2canvas mide el DOM clonado completo, no la pantalla.
+                const canvas = await html2canvas(cloneWrap, {
+                    backgroundColor: '#ffffff',
+                    scale: scale,
+                    useCORS: true,
+                    allowTaint: false,
+                    logging: false,
+                    width: cloneWrap.scrollWidth,
+                    height: cloneWrap.scrollHeight,
+                    windowWidth: cloneWrap.scrollWidth,
+                    windowHeight: cloneWrap.scrollHeight
+                });
+
+                document.body.removeChild(cloneWrap);
+
+                const link = document.createElement('a');
+                const fecha = new Date().toISOString().slice(0, 10);
+                link.download = `horario-${fecha}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+            } catch (error) {
+                const temporal = document.querySelector('body > div[style*="-100000px"]');
+                if (temporal) temporal.remove();
+                console.error('Error al exportar presentación:', error);
+                Swal.fire('No se pudo exportar', 'Ocurrió un error al generar la imagen completa.', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = textoOriginal;
+                }
+            }
+        }
+
         // --- MODO PRESENTACIÓN & LEYENDA AUTOMÁTICA ---
         document.getElementById('btn-presentation').addEventListener('click', () => {
             toolsDropdown.classList.add('hidden'); toolsArrow.style.transform = 'rotate(0deg)';
@@ -1503,24 +1618,5 @@
             }
         });
     </script>
-
-<script>
-(function () {
-    function compactDoubleShifts() {
-        if (!document.body.classList.contains('presentation-mode')) return;
-        document.querySelectorAll('td').forEach(function (cell) {
-            const shifts = Array.from(cell.querySelectorAll(':scope > .assigned-shift'));
-            shifts.forEach(s => s.classList.remove('compact-double-shift'));
-            if (shifts.length === 2) {
-                shifts.forEach(s => s.classList.add('compact-double-shift'));
-            }
-        });
-    }
-    const observer = new MutationObserver(compactDoubleShifts);
-    observer.observe(document.body, {childList:true, subtree:true, attributes:true});
-    window.addEventListener('load', compactDoubleShifts);
-})();
-</script>
-
 </body>
 </html>
