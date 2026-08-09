@@ -23,18 +23,30 @@
     <style>
         body { overscroll-behavior-y: none; } 
         
-        /* MODO PRESENTACIÓN (REPORTE CORPORATIVO) */
+        /* MODO PRESENTACIÓN: reporte compacto, con los colores reales de cada turno */
         .presentation-mode { background-color: #ffffff !important; }
         .presentation-mode #topbar, .presentation-mode #btn-toggle-sidebar { display: none !important; }
-        .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 0 !important; background: transparent; box-shadow: none; border: none; overflow: visible !important; }
+        .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 10px 14px 90px !important; background: transparent; box-shadow: none; border: none; overflow: auto !important; }
         .presentation-mode #presentation-header { display: block !important; }
         .presentation-mode #presentation-footer-legend { display: block !important; }
-        .presentation-mode table { border-collapse: collapse !important; border: 2px solid #000; }
-        .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
-        .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
-        .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
-        .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
+        .presentation-mode #presentation-header { margin: 0 0 12px !important; padding: 0 2px !important; }
+        .presentation-mode #presentation-header h1 { font-size: 1.45rem !important; line-height: 1.1 !important; margin-bottom: 6px !important; color: #0f3f91 !important; }
+        .presentation-mode #presentation-header > div { border-bottom: 2px solid #1d4ed8 !important; padding-bottom: 6px !important; }
+        .presentation-mode #presentation-header .text-xl { font-size: 1rem !important; }
+        .presentation-mode #presentation-header .text-base { font-size: .78rem !important; }
+        .presentation-mode table { border-collapse: collapse !important; border: 1px solid #64748b !important; background: #fff !important; }
+        .presentation-mode th { border: 1px solid #64748b !important; background: #0756a6 !important; color: #fff !important; padding: 5px 4px !important; }
+        .presentation-mode td { border: 1px solid #94a3b8 !important; background: #fff !important; color: #111827 !important; padding: 2px !important; }
+        .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 12px; }
+        .presentation-mode .assigned-shift { border: 1px solid rgba(15,23,42,.22) !important; box-shadow: none !important; padding: 5px 3px !important; pointer-events: none !important; font-size: 10px !important; border-radius: 2px !important; }
+        .presentation-mode .assigned-shift[data-novedad="true"] { font-style: normal !important; }
+        .presentation-mode .assigned-shift.bg-white { background: #ffffff !important; color: #111827 !important; }
         .presentation-mode #presentation-actions { display: flex !important; }
+        .presentation-mode #presentation-footer-legend { margin-top: 12px !important; padding: 8px 0 0 !important; border-top: 1px solid #cbd5e1 !important; }
+        .presentation-mode #presentation-footer-legend h3 { font-size: 12px !important; margin-bottom: 7px !important; }
+        .presentation-mode #legend-items-container { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important; gap: 6px !important; }
+        .presentation-mode #legend-items-container > div { padding: 5px !important; background: #fff !important; }
+        .presentation-mode #legend-items-container ul { margin-top: 2px !important; }
 
         /* MODO MONOCROMÁTICO (BLANCO Y NEGRO PARA IMPRESIÓN) */
         .presentation-mode.monochrome-report .assigned-shift { background: #ffffff !important; color: #000000 !important; border: 1px solid #000 !important; }
@@ -100,21 +112,21 @@
         .thick-scrollbar::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 4px solid #f1f5f9; }
         .thick-scrollbar::-webkit-scrollbar-thumb:active { background-color: #475569; }
 
-        /* PALETA DE COLORES AMPLIADA */
-        .bg-pastel-blue { background-color: #BFDBFE; color: #1e3a8a; }
-        .bg-pastel-pink { background-color: #FBCFE8; color: #831843; }
-        .bg-pastel-yellow { background-color: #FEF08A; color: #713f12; }
-        .bg-pastel-purple { background-color: #E9D5FF; color: #581c87; }
-        .bg-pastel-orange { background-color: #FED7AA; color: #7c2d12; }
-        .bg-pastel-green { background-color: #BBF7D0; color: #14532d; } 
-        .bg-pastel-gray { background-color: #F3F4F6; color: #1f2937; }
-        .bg-corp-blue { background-color: #2563EB; color: #ffffff; }
-        .bg-corp-emerald { background-color: #059669; color: #ffffff; }
-        .bg-corp-amber { background-color: #D97706; color: #ffffff; }
-        .bg-corp-rose { background-color: #E11D48; color: #ffffff; }
-        .bg-corp-indigo { background-color: #4F46E5; color: #ffffff; }
-        .bg-corp-teal { background-color: #0D9488; color: #ffffff; }
-        .bg-corp-slate { background-color: #334155; color: #ffffff; }
+        /* PALETA: colores claramente diferenciados y legibles en malla + presentación */
+        .bg-pastel-blue { background-color: #2196F3; color: #ffffff; }
+        .bg-pastel-pink { background-color: #EC4899; color: #ffffff; }
+        .bg-pastel-yellow { background-color: #FACC15; color: #422006; }
+        .bg-pastel-purple { background-color: #8B5CF6; color: #ffffff; }
+        .bg-pastel-orange { background-color: #F97316; color: #ffffff; }
+        .bg-pastel-green { background-color: #22C55E; color: #ffffff; }
+        .bg-pastel-gray { background-color: #E5E7EB; color: #111827; }
+        .bg-corp-blue { background-color: #1565C0; color: #ffffff; }
+        .bg-corp-emerald { background-color: #00897B; color: #ffffff; }
+        .bg-corp-amber { background-color: #FF8F00; color: #ffffff; }
+        .bg-corp-rose { background-color: #DC2626; color: #ffffff; }
+        .bg-corp-indigo { background-color: #6366F1; color: #ffffff; }
+        .bg-corp-teal { background-color: #06B6D4; color: #083344; }
+        .bg-corp-slate { background-color: #475569; color: #ffffff; }
         .bg-corp-purple { background-color: #7C3AED; color: #ffffff; }
         /* AUTENTICACIÓN / PWA */
         body.auth-locked > *:not(#auth-screen) { visibility: hidden !important; }
@@ -290,6 +302,16 @@
                 </button>
 
                 <div id="tools-dropdown" class="hidden absolute right-0 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl p-3 z-50 flex flex-col gap-2 whitespace-nowrap md:w-64">
+                    <button id="btn-search-tools" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-bold text-xs md:text-sm transition shadow-sm border border-blue-200 text-left">
+                        🔎 Buscar Turnos
+                    </button>
+                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
+                        📺 Presentación
+                    </button>
+                    <button id="btn-download" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs md:text-sm transition shadow-sm border border-green-700 text-left">
+                        ⬇️ Descargas / GPF
+                    </button>
+                    <hr class="border-gray-200">
                     <label class="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 font-bold text-xs md:text-sm transition shadow-sm flex items-center border border-purple-200 cursor-pointer">
                         <span class="text-base leading-none mr-1.5">👥</span> Personal (.xlsx)
                         <input type="file" id="upload-staff" accept=".xlsx" class="hidden">
@@ -297,19 +319,11 @@
                     <button id="btn-config" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
                         ⚙️ Configuración
                     </button>
-                    <hr class="border-gray-200">
                     <button id="btn-guardar-semana" class="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-bold text-xs md:text-sm transition shadow-sm border border-blue-200 text-left">
                         💾 Guardar Semana
                     </button>
                     <button id="btn-historial" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
                         📜 Historial
-                    </button>
-                    <hr class="border-gray-200">
-                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
-                        📺 Presentación
-                    </button>
-                    <button id="btn-download" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs md:text-sm transition shadow-sm border border-green-700 text-left">
-                        ⬇️ Descargar GPF
                     </button>
                     <button id="btn-toggle-sidebar" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-xs md:text-sm transition shadow-sm flex items-center justify-between border border-blue-700">
                         <span><span class="text-lg leading-none mr-1">⋮</span> Turnos GPF</span>
@@ -330,13 +344,9 @@
             <div id="presentation-header" class="hidden mb-6 mt-4 px-4">
                 <h1 class="text-3xl font-black text-center mb-2 uppercase tracking-wide text-gray-900">Malla Operativa Semanal</h1>
                 <div class="flex justify-between items-end border-b-2 border-gray-800 pb-2">
-                    <div>
+                    <div class="flex items-center justify-between gap-4 w-full">
                         <p class="font-black text-xl text-gray-800 uppercase" id="ph-sucursal">SUCURSAL</p>
                         <p class="text-base text-gray-700 font-medium" id="ph-fechas">Rango de fechas</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 uppercase font-bold">Generado el:</p>
-                        <p class="text-sm font-bold text-gray-800" id="ph-generado">Fecha</p>
                     </div>
                 </div>
             </div>
@@ -653,12 +663,28 @@
             if (typeof f === 'string') {
                 const turno = turnosDB.find(t => t.codigo === f || t.desc === f);
                 return {
-                    id: f, codigo: turno ? turno.codigo : f, baseDesc: turno ? turno.desc : f, desc: turno ? turno.desc : f, horasExtras: "0", colorCls: 'bg-pastel-blue'
+                    id: f, codigo: turno ? turno.codigo : f, baseDesc: turno ? turno.desc : f, desc: turno ? turno.desc : f, horasExtras: "0", colorCls: null
                 };
             }
-            if(!f.colorCls) f.colorCls = 'bg-pastel-blue';
             return f;
         });
+
+        // Cada favorito nuevo recibe automáticamente un color que no esté siendo usado por otro favorito.
+        function obtenerSiguienteColorFavorito() {
+            const usados = new Set(favoritos.map(f => f.colorCls).filter(Boolean));
+            const candidatos = listaColoresDisponibles.map(c => c.id);
+            return candidatos.find(c => !usados.has(c)) || candidatos[favoritos.length % candidatos.length];
+        }
+
+        // Migración: los favoritos antiguos que no tenían color reciben colores únicos ahora.
+        let favoritosMigrados = false;
+        favoritos.forEach(f => {
+            if(!f.colorCls) {
+                f.colorCls = obtenerSiguienteColorFavorito();
+                favoritosMigrados = true;
+            }
+        });
+        if(favoritosMigrados) localStorage.setItem('favoritos_turnos', JSON.stringify(favoritos));
 
         let currentTemplateBuffer = null; 
 
@@ -674,6 +700,14 @@
             e.stopPropagation();
             toolsDropdown.classList.toggle('hidden');
             toolsArrow.style.transform = toolsDropdown.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+
+        document.getElementById('btn-search-tools').addEventListener('click', () => {
+            toolsDropdown.classList.add('hidden');
+            toolsArrow.style.transform = 'rotate(0deg)';
+            sidebar.classList.add('open');
+            overlay.classList.add('open');
+            setTimeout(() => document.getElementById('search-shift')?.focus(), 120);
         });
 
         document.addEventListener('click', (e) => {
@@ -872,14 +906,15 @@
                 const idFav = isNovedad(turno.desc) ? turno.desc : turno.codigo;
                 const isFav = esFavorito(idFav);
                 const starColor = isFav ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500';
-                let baseColor = isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-white';
+                const favActual = favoritos.find(f => f.id === idFav);
+                let baseColor = favActual?.colorCls || (isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-white');
                 
                 const textoVisual = isNovedad(turno.desc) ? turno.desc : limpiarTextoTurno(turno.desc);
 
                 const div = document.createElement('div');
                 div.className = `flex justify-between items-center ${baseColor} border border-gray-200 p-2 rounded shadow-sm group`;
                 div.innerHTML = `
-                    <div class="shift-block text-xs font-medium text-gray-700 flex-1 py-1" draggable="true" data-code="${turno.codigo}" data-desc="${turno.desc}">
+                    <div class="shift-block text-xs font-medium flex-1 py-1" draggable="true" data-code="${turno.codigo}" data-desc="${turno.desc}" data-color-cls="${baseColor}">
                         ${!isNovedad(turno.desc) && turno.codigo ? `<span class="text-gray-400 mr-1">[${turno.codigo}]</span> ` : ''}${textoVisual}
                     </div>
                     <button class="ml-2 ${starColor} transition focus:outline-none text-2xl px-3 py-1" onclick="toggleFavorito('${idFav}')">★</button>
@@ -906,7 +941,7 @@
             } else {
                 const turno = turnosDB.find(t => t.codigo === idFav || t.desc === idFav);
                 if(!turno) return;
-                let cCls = isNovedad(turno.desc) ? getColorPorNovedad(turno.desc) : 'bg-pastel-blue';
+                let cCls = obtenerSiguienteColorFavorito();
                 favoritos.push({
                     id: idFav, codigo: turno.codigo, baseDesc: turno.desc, desc: turno.desc, horasExtras: "0", colorCls: cCls
                 });
@@ -928,7 +963,7 @@
                 Swal.fire({ icon: 'info', title: 'Ya existe', text: 'Este turno extendido ya está en tus Favoritos.', confirmButtonColor: '#10b981' });
                 return;
             }
-            let cCls = turnoExt.colorCls || 'bg-pastel-orange';
+            let cCls = obtenerSiguienteColorFavorito();
             favoritos.push({
                 id, codigo: turnoExt.codigo, baseDesc: turnoExt.baseDesc, desc: turnoExt.desc, horasExtras: turnoExt.horasExtras, colorCls: cCls
             });
@@ -949,6 +984,7 @@
                 const block = document.createElement('div');
                 const textoVisual = isNov ? fav.baseDesc : limpiarTextoTurno(fav.desc);
 
+                if(!fav.colorCls) { fav.colorCls = obtenerSiguienteColorFavorito(); guardarFavoritosStorage(); }
                 block.className = `shift-block px-2 py-1 md:px-3 md:py-1 rounded text-[10px] md:text-xs border border-gray-400 shadow-sm cursor-pointer max-w-max h-max font-bold ${fav.colorCls || 'bg-white'}`;
                 block.draggable = true;
                 block.dataset.favId = fav.id;
@@ -1062,7 +1098,7 @@
                 desc: dragSourceElement.dataset.desc,
                 baseDesc: dragSourceElement.dataset.baseDesc || dragSourceElement.dataset.desc,
                 horasExtras: dragSourceElement.dataset.horasExtras || "0",
-                colorCls: dragSourceElement.dataset.colorCls || (dragSourceElement.className.match(/bg-[a-z]+-[a-z0-9-]+/)?.[0] || 'bg-white')
+                colorCls: dragSourceElement.dataset.colorCls || dragSourceElement.dataset.colorCls || (dragSourceElement.className.match(/bg-(?:pastel|corp)-[a-z0-9-]+/)?.[0] || 'bg-white')
             };
             if(isNovedad(draggedData.desc)) draggedData.colorCls = getColorPorNovedad(draggedData.desc);
             
@@ -1125,14 +1161,9 @@
                     } else {
                         const idFav = isNovedad(draggedData.desc) ? draggedData.desc : draggedData.codigo;
                         if(idFav && !esFavorito(idFav)) {
-                            let tempFavs = [...favoritos];
                             toggleFavorito(idFav);
-                            let favAgregado = favoritos.find(f => f.id === idFav);
-                            if(favAgregado && draggedData.colorCls && !tempFavs.some(f => f.id === idFav)) {
-                                favAgregado.colorCls = draggedData.colorCls;
-                                guardarFavoritosStorage();
-                                renderizarFavoritos();
-                            }
+                            // toggleFavorito ya asigna un color base único al nuevo favorito.
+                            renderizarFavoritos();
                         }
                     }
                     if (dragSourceCell && typeof dragSourceCell !== 'object' && dragSourceElement) {
@@ -1495,9 +1526,6 @@
             const formatear = d => ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
             document.getElementById('ph-fechas').textContent = `DEL ${formatear(dIni)} AL ${formatear(dFin)}`;
             
-            let hoyStr = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
-            document.getElementById('ph-generado').textContent = hoyStr;
-
             // Escanear colores usados en la malla actual para construir la leyenda dinámica
             construirLeyendaDinamica();
             
