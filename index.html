@@ -35,19 +35,19 @@
         .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
         /* DOBLE TURNO COMPACTO: solo visualización de Presentación */
         .presentation-mode .assigned-shift.compact-double-shift {
-            padding: 0px 2px !important;
+            padding: 1px 3px !important;
             margin: 0.5px 0 !important;
             min-height: 0 !important;
             height: auto !important;
-            line-height: 1 !important;
-            font-size: 8px !important;
+            line-height: 1.1 !important;
+            font-size: 9.5px !important;
             border-width: 1px !important;
-            border-radius: 2px !important;
+            border-radius: 3px !important;
         }
         .presentation-mode .assigned-shift.compact-double-shift > div {
             padding-left: 1px !important;
             padding-right: 1px !important;
-            line-height: 1 !important;
+            line-height: 1.1 !important;
         }
 
         .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
@@ -561,8 +561,8 @@
 
         function aplicarColorInline(el, colorCls) {
             const c = COLOR_HEX_MAP[colorCls] || COLOR_HEX_MAP['bg-white'];
-            el.style.backgroundColor = c.bg;
-            el.style.color = c.text;
+            el.style.setProperty('background-color', c.bg, 'important');
+            el.style.setProperty('color', c.text, 'important');
         }
 
         let empleados = JSON.parse(localStorage.getItem('farmacia_empleados_v10')) || empleadosDefecto;
@@ -1448,21 +1448,37 @@
             // Escanear colores usados en la malla actual para construir la leyenda dinámica
             construirLeyendaDinamica();
             
+            document.getElementById('toggle-colors-checkbox').checked = true;
+            document.body.classList.remove('monochrome-report');
+            document.querySelectorAll('#grid-body .assigned-shift').forEach(el => {
+                aplicarColorInline(el, el.dataset.colorCls || 'bg-white');
+            });
+
             document.body.classList.add('presentation-mode');
             actualizarDobleTurnoPresentacion();
         });
 
         document.getElementById('btn-exit-presentation').addEventListener('click', () => {
             document.body.classList.remove('presentation-mode');
+            document.body.classList.remove('monochrome-report');
+            document.getElementById('toggle-colors-checkbox').checked = true;
+            document.querySelectorAll('#grid-body .assigned-shift').forEach(el => {
+                aplicarColorInline(el, el.dataset.colorCls || 'bg-white');
+            });
             actualizarDobleTurnoPresentacion();
         });
 
         function togglePresentationColors(mostrar) {
-            if(mostrar) {
-                document.body.classList.remove('monochrome-report');
-            } else {
-                document.body.classList.add('monochrome-report');
-            }
+            document.body.classList.toggle('monochrome-report', !mostrar);
+            document.querySelectorAll('#grid-body .assigned-shift').forEach(el => {
+                if (el.dataset.novedad === 'true') return; // las novedades ya se ven en gris por CSS
+                if (mostrar) {
+                    aplicarColorInline(el, el.dataset.colorCls || 'bg-white');
+                } else {
+                    el.style.setProperty('background-color', '#ffffff', 'important');
+                    el.style.setProperty('color', '#000000', 'important');
+                }
+            });
         }
 
         function construirLeyendaDinamica() {
