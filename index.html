@@ -35,18 +35,19 @@
         .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
         /* DOBLE TURNO COMPACTO: solo visualización de Presentación */
         .presentation-mode .assigned-shift.compact-double-shift {
-            padding: 1px 3px !important;
-            margin: 1px 0 !important;
+            padding: 0px 2px !important;
+            margin: 0.5px 0 !important;
             min-height: 0 !important;
             height: auto !important;
-            line-height: 1.05 !important;
-            font-size: 9px !important;
-            border-radius: 3px !important;
+            line-height: 1 !important;
+            font-size: 8px !important;
+            border-width: 1px !important;
+            border-radius: 2px !important;
         }
         .presentation-mode .assigned-shift.compact-double-shift > div {
             padding-left: 1px !important;
             padding-right: 1px !important;
-            line-height: 1.05 !important;
+            line-height: 1 !important;
         }
 
         .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
@@ -534,6 +535,36 @@
             { id: 'bg-corp-purple', label: 'Morado Oscuro', class: 'bg-corp-purple' }
         ];
 
+        // Mapa de valores hex reales para cada clase de color.
+        // Se usa para fijar el color como estilo inline (además de la clase CSS),
+        // garantizando que el color elegido en Favoritos se mantenga exactamente
+        // igual en la malla y en Modo Presentación, sin depender del orden de
+        // las reglas CSS ni de reprocesamientos del DOM (Tailwind CDN, html2canvas, etc.).
+        const COLOR_HEX_MAP = {
+            'bg-pastel-blue':   { bg: '#BFDBFE', text: '#1e3a8a' },
+            'bg-pastel-pink':   { bg: '#FBCFE8', text: '#831843' },
+            'bg-pastel-yellow': { bg: '#FEF08A', text: '#713f12' },
+            'bg-pastel-purple': { bg: '#E9D5FF', text: '#581c87' },
+            'bg-pastel-orange': { bg: '#FED7AA', text: '#7c2d12' },
+            'bg-pastel-green':  { bg: '#BBF7D0', text: '#14532d' },
+            'bg-pastel-gray':   { bg: '#F3F4F6', text: '#1f2937' },
+            'bg-corp-blue':     { bg: '#2563EB', text: '#ffffff' },
+            'bg-corp-emerald':  { bg: '#059669', text: '#ffffff' },
+            'bg-corp-amber':    { bg: '#D97706', text: '#ffffff' },
+            'bg-corp-rose':     { bg: '#E11D48', text: '#ffffff' },
+            'bg-corp-indigo':   { bg: '#4F46E5', text: '#ffffff' },
+            'bg-corp-teal':     { bg: '#0D9488', text: '#ffffff' },
+            'bg-corp-slate':    { bg: '#334155', text: '#ffffff' },
+            'bg-corp-purple':   { bg: '#7C3AED', text: '#ffffff' },
+            'bg-white':         { bg: '#ffffff', text: '#1f2937' }
+        };
+
+        function aplicarColorInline(el, colorCls) {
+            const c = COLOR_HEX_MAP[colorCls] || COLOR_HEX_MAP['bg-white'];
+            el.style.backgroundColor = c.bg;
+            el.style.color = c.text;
+        }
+
         let empleados = JSON.parse(localStorage.getItem('farmacia_empleados_v10')) || empleadosDefecto;
         
         function guardarEmpleadosStorage() {
@@ -857,6 +888,7 @@
                 block.dataset.baseDesc = fav.baseDesc;
                 block.dataset.horasExtras = fav.horasExtras || "0";
                 block.dataset.colorCls = fav.colorCls;
+                aplicarColorInline(block, fav.colorCls || 'bg-white');
                 block.textContent = textoVisual; 
 
                 block.addEventListener('dragstart', handleDragStart);
@@ -1191,6 +1223,7 @@
             div.dataset.horasExtras = data.horasExtras || "0";
             div.dataset.colorCls = data.colorCls || "bg-white";
             if(isNov) div.dataset.novedad = "true";
+            aplicarColorInline(div, data.colorCls || "bg-white");
             
             div.draggable = true;
             div.addEventListener('dragstart', handleDragStart);
@@ -1325,6 +1358,7 @@
             
             el.classList.add(colorClass);
             el.dataset.colorCls = colorClass;
+            aplicarColorInline(el, colorClass);
         };
 
         // --- CONFIGURACIÓN & TAREAS POR COLOR ---
