@@ -29,11 +29,27 @@
         .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 0 !important; background: transparent; box-shadow: none; border: none; overflow: visible !important; }
         .presentation-mode #presentation-header { display: block !important; }
         .presentation-mode #presentation-footer-legend { display: block !important; }
-        .presentation-mode table { border-collapse: collapse !important; border: 2px solid #000; }
-        .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
+        .presentation-mode table { border-collapse: collapse !important; border: 3px solid #000; }
+        .presentation-mode th, .presentation-mode td { border: 2px solid #333 !important; background: #fff !important; color: #000 !important; }
         .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
         .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 13px; }
-        /* DOBLE TURNO COMPACTO: solo visualización de Presentación */
+        /* DOBLE TURNO COMPACTO: se aplica SIEMPRE (edición y Presentación) cuando una
+           celda tiene exactamente 2 turnos, para que no ensanche la fila. */
+        .assigned-shift.compact-double-shift {
+            padding: 0px 2px !important;
+            margin: 0.5px 0 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            line-height: 1.1 !important;
+            font-size: 9px !important;
+            border-radius: 3px !important;
+        }
+        .assigned-shift.compact-double-shift > div {
+            padding-left: 1px !important;
+            padding-right: 1px !important;
+            line-height: 1.1 !important;
+        }
+        /* En Presentación, un poco más grande (coherente con el resto del reporte) */
         .presentation-mode .assigned-shift.compact-double-shift {
             padding: 1px 3px !important;
             margin: 0.5px 0 !important;
@@ -280,15 +296,9 @@
             <!-- Encabezado Modo Presentación -->
             <div id="presentation-header" class="hidden mb-6 mt-4 px-4">
                 <h1 class="text-3xl font-black text-center mb-2 uppercase tracking-wide text-gray-900">Malla Operativa Semanal</h1>
-                <div class="flex justify-between items-end border-b-2 border-gray-800 pb-2">
-                    <div>
-                        <p class="font-black text-xl text-gray-800 uppercase" id="ph-sucursal">SUCURSAL</p>
-                        <p class="text-base text-gray-700 font-medium" id="ph-fechas">Rango de fechas</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs text-gray-500 uppercase font-bold">Generado el:</p>
-                        <p class="text-sm font-bold text-gray-800" id="ph-generado">Fecha</p>
-                    </div>
+                <div class="border-b-2 border-gray-800 pb-2">
+                    <p class="font-black text-xl text-gray-800 uppercase" id="ph-sucursal">SUCURSAL</p>
+                    <p class="text-base text-gray-700 font-medium" id="ph-fechas">Rango de fechas</p>
                 </div>
             </div>
 
@@ -713,6 +723,50 @@
             dragSourceCell = null;
             draggedData = null;
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            detenerAutoScroll();
+        });
+
+        // --- AUTO-SCROLL AL ARRASTRAR CERCA DEL BORDE ---
+        // Útil sobre todo en móvil: si arrastras un turno hacia abajo/arriba de la
+        // pantalla, esta se desplaza sola para que puedas soltarlo en un colaborador
+        // que no estaba visible, sin necesitar el dedo libre para hacer scroll.
+        let autoScrollRAF = null;
+        let autoScrollDireccion = 0; // -1 arriba, 0 quieto, 1 abajo
+        const AUTO_SCROLL_MARGEN = 70; // px desde el borde donde empieza a activarse
+        const AUTO_SCROLL_VELOCIDAD = 14; // px por frame
+
+        function pasoAutoScroll() {
+            if (autoScrollDireccion !== 0) {
+                window.scrollBy(0, autoScrollDireccion * AUTO_SCROLL_VELOCIDAD);
+                autoScrollRAF = requestAnimationFrame(pasoAutoScroll);
+            } else {
+                autoScrollRAF = null;
+            }
+        }
+
+        function detenerAutoScroll() {
+            autoScrollDireccion = 0;
+            if (autoScrollRAF) {
+                cancelAnimationFrame(autoScrollRAF);
+                autoScrollRAF = null;
+            }
+        }
+
+        document.addEventListener('dragover', (e) => {
+            if (!dragSourceElement && !draggedData) { detenerAutoScroll(); return; }
+            const y = e.clientY;
+            if (y == null || y === 0) return; // algunos navegadores mandan 0 en el primer evento
+            const alto = window.innerHeight;
+            if (y < AUTO_SCROLL_MARGEN) {
+                autoScrollDireccion = -1;
+            } else if (y > alto - AUTO_SCROLL_MARGEN) {
+                autoScrollDireccion = 1;
+            } else {
+                autoScrollDireccion = 0;
+            }
+            if (autoScrollDireccion !== 0 && !autoScrollRAF) {
+                autoScrollRAF = requestAnimationFrame(pasoAutoScroll);
+            }
         });
 
         function esCedulaValida(valor) {
@@ -1222,6 +1276,7 @@
 
         let autosaveTimer = null;
         function recalcularTotales() {
+            actualizarDobleTurnoPresentacion();
             empleados.forEach((emp, rowIndex) => {
                 const tr = document.querySelector(`#grid-body tr:nth-child(${rowIndex + 1})`);
                 if(!tr) return;
@@ -1454,13 +1509,12 @@
         });
 
 
-        // Compacta exactamente dos turnos en la misma celda. Solo es visual.
+        // Compacta exactamente dos turnos en la misma celda (edición Y Presentación). Solo es visual.
         function actualizarDobleTurnoPresentacion() {
-            const enPresentacion = document.body.classList.contains('presentation-mode');
             document.querySelectorAll('#grid-body .droppable-cell').forEach(cell => {
                 const shifts = Array.from(cell.children).filter(el => el.classList.contains('assigned-shift'));
                 shifts.forEach(shift => shift.classList.remove('compact-double-shift'));
-                if (enPresentacion && shifts.length === 2) {
+                if (shifts.length === 2) {
                     shifts.forEach(shift => shift.classList.add('compact-double-shift'));
                 }
             });
@@ -1479,9 +1533,6 @@
             
             const formatear = d => ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
             document.getElementById('ph-fechas').textContent = `DEL ${formatear(dIni)} AL ${formatear(dFin)}`;
-            
-            let hoyStr = new Date().toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' });
-            document.getElementById('ph-generado').textContent = hoyStr;
 
             // Escanear colores usados en la malla actual para construir la leyenda dinámica
             construirLeyendaDinamica();
@@ -1597,21 +1648,25 @@
                     Math.ceil(sourceRect.width)
                 );
 
+                /*
+                 * IMPORTANTE: html2canvas trata los elementos con position:fixed o
+                 * muy alejados del documento (izquierda -100000px) de forma especial
+                 * al clonar la página internamente, y en varios navegadores móviles
+                 * termina recortando la captura al tamaño de la pantalla visible.
+                 * Solución: insertamos la copia como un elemento NORMAL (sin position
+                 * especial, sin z-index negativo), y confiamos en que el modal de
+                 * SweetAlert2 ("Generando Imagen...") ya está cubriendo toda la
+                 * pantalla con su fondo oscuro (z-index muy alto) mientras se genera,
+                 * así el usuario nunca llega a ver esta copia en pantalla.
+                 */
                 exportHost = document.createElement('div');
                 exportHost.id = 'export-host-full';
-                exportHost.style.position = 'fixed';
-                exportHost.style.left = '0';
-                exportHost.style.top = '0';
                 exportHost.style.width = sourceWidth + 'px';
                 exportHost.style.height = 'auto';
-                exportHost.style.minHeight = '0';
-                exportHost.style.maxHeight = 'none';
-                exportHost.style.overflow = 'visible';
                 exportHost.style.background = '#ffffff';
                 exportHost.style.padding = '16px';
                 exportHost.style.boxSizing = 'border-box';
-                exportHost.style.zIndex = '-1';
-                exportHost.style.pointerEvents = 'none';
+                exportHost.style.margin = '0';
 
                 const clone = source.cloneNode(true);
                 clone.removeAttribute('id');
@@ -1636,10 +1691,11 @@
                     clonedTable.style.margin = '0';
                 }
 
-                exportHost.appendChild(clone);
+                // Se agrega al final del body, en flujo normal (detrás del modal de SweetAlert2).
                 document.body.appendChild(exportHost);
+                exportHost.appendChild(clone);
 
-                await new Promise(resolve => setTimeout(resolve, 60));
+                await new Promise(resolve => setTimeout(resolve, 80));
                 await new Promise(resolve =>
                     requestAnimationFrame(() =>
                         requestAnimationFrame(resolve)
@@ -1655,7 +1711,7 @@
 
                 const canvas = await html2canvas(exportHost, {
                     backgroundColor: '#ffffff',
-                    scale: Math.min(2, Math.max(1, window.devicePixelRatio || 1)),
+                    scale: Math.min(1.6, Math.max(1, window.devicePixelRatio || 1)),
                     useCORS: true,
                     allowTaint: false,
                     logging: false,
