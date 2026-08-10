@@ -147,10 +147,19 @@
         .auth-btn.secondary { background:#eff6ff; color:#1d4ed8; }
         .auth-message { min-height:20px; font-size:12px; text-align:center; margin-top:10px; }
         #account-pill { display:none; }
-        .orientation-hint { display:none; }
+        @media (max-width: 900px) {
+            body { height: auto !important; min-height: 100vh; overflow-y: auto !important; overflow-x: hidden !important; }
+            #main-content-wrapper { overflow: visible !important; min-height: 50vh; }
+            #favorites-container { max-height: 140px; overflow-y: auto !important; }
+        }
+        /* Aviso de orientación: banner informativo, NO bloquea la interacción */
+        #orientation-hint { display:none; }
         @media (max-width: 700px) and (orientation:portrait) {
-            .orientation-hint { display:flex; position:fixed; inset:0; z-index:9998; background:rgba(15,23,42,.92); color:#fff; align-items:center; justify-content:center; text-align:center; padding:30px; }
-            .orientation-hint > div { max-width:360px; }
+            #orientation-hint:not(.dismissed) {
+                display:flex; position:sticky; top:0; left:0; right:0; z-index:60;
+                background:#1d4ed8; color:#fff; align-items:center; justify-content:space-between;
+                gap:10px; padding:8px 14px; font-size:12px; font-weight:700;
+            }
         }
     </style>
 </head>
@@ -181,7 +190,10 @@
             <div id="auth-message" class="auth-message text-gray-500"></div>
         </div>
     </div>
-    <div class="orientation-hint"><div><div style="font-size:52px;margin-bottom:12px">↻</div><h2 style="font-size:22px;font-weight:800">Gira el teléfono</h2><p style="margin-top:8px;opacity:.8">El Gestor de Turnos está optimizado para usarlo en horizontal.</p></div></div>
+    <div id="orientation-hint">
+        <span>↻ Para mejor experiencia, gira tu teléfono a horizontal</span>
+        <button id="btn-close-orientation-hint" style="background:rgba(255,255,255,.2); border:none; color:#fff; border-radius:8px; padding:2px 10px; font-weight:800; cursor:pointer; flex-shrink:0;">✕</button>
+    </div>
 
     <!-- Controles flotantes Modo Presentación -->
     <div id="presentation-actions" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3 z-50 bg-white/90 backdrop-blur p-2 rounded-full shadow-2xl border border-gray-300">
@@ -229,6 +241,13 @@
                 </button>
 
                 <div id="tools-dropdown" class="hidden absolute right-0 mt-2 bg-white border border-gray-200 shadow-xl rounded-xl p-3 z-50 flex flex-col gap-2 whitespace-nowrap md:w-64">
+                    <button id="btn-toggle-sidebar" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-xs md:text-sm transition shadow-sm flex items-center justify-between border border-blue-700">
+                        <span><span class="text-lg leading-none mr-1">🔎</span> Turnos GPF</span>
+                    </button>
+                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
+                        📺 Presentación
+                    </button>
+                    <hr class="border-gray-200">
                     <label class="px-3 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 font-bold text-xs md:text-sm transition shadow-sm flex items-center border border-purple-200 cursor-pointer">
                         <span class="text-base leading-none mr-1.5">👥</span> Personal (.xlsx)
                         <input type="file" id="upload-staff" accept=".xlsx" class="hidden">
@@ -243,15 +262,8 @@
                     <button id="btn-historial" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
                         📜 Historial
                     </button>
-                    <hr class="border-gray-200">
-                    <button id="btn-presentation" class="px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-bold text-xs md:text-sm transition shadow-sm border border-gray-200 text-left">
-                        📺 Presentación
-                    </button>
                     <button id="btn-download" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-xs md:text-sm transition shadow-sm border border-green-700 text-left">
                         ⬇️ Descargar GPF
-                    </button>
-                    <button id="btn-toggle-sidebar" class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-xs md:text-sm transition shadow-sm flex items-center justify-between border border-blue-700">
-                        <span><span class="text-lg leading-none mr-1">⋮</span> Turnos GPF</span>
                     </button>
                 </div>
             </div>
@@ -260,7 +272,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="flex flex-1 overflow-hidden relative bg-gray-200">
+    <div class="flex flex-1 overflow-hidden relative bg-gray-200" id="main-content-wrapper">
         
         <!-- Grid Central -->
         <div class="flex-1 p-2 md:p-4 overflow-auto grid-container transition-all w-full pb-32" id="capture-area">
@@ -341,6 +353,10 @@
                 });
             });
         }
+        // Aviso de orientación: solo informativo, el usuario puede cerrarlo y seguir usando la app en vertical.
+        document.getElementById('btn-close-orientation-hint')?.addEventListener('click', () => {
+            document.getElementById('orientation-hint').classList.add('dismissed');
+        });
     </script>
 
     <script>
