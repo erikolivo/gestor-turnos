@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/DragDropTouch.min.js"></script>
+    <script src="./dragdroptouch.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
@@ -82,7 +82,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap; 
-            touch-action: pan-y; 
+            touch-action: pan-x pan-y; 
         }
         .assigned-shift { margin-bottom: 2px; padding: 4px 2px; position: relative; }
         .assigned-shift:last-child { margin-bottom: 0; }
@@ -357,6 +357,16 @@
         document.getElementById('btn-close-orientation-hint')?.addEventListener('click', () => {
             document.getElementById('orientation-hint').classList.add('dismissed');
         });
+        // --- ARRASTRE TÁCTIL: solo se activa "manteniendo presionado" el turno ---
+        // Esto NO afecta el mouse en computadora (esa librería solo escucha eventos táctiles).
+        // Si el dedo se desliza (scroll) sin mantener quieto, el arrastre se cancela y
+        // la pantalla se desplaza normalmente en vez de mover el turno sin querer.
+        if (window.DragDropTouch && window.DragDropTouch.DragDropTouch) {
+            const DDT = window.DragDropTouch.DragDropTouch;
+            DDT._ISPRESSHOLDMODE = true;   // exige mantener presionado antes de arrastrar
+            DDT._PRESSHOLDAWAIT = 280;     // ms que hay que mantener quieto el dedo
+            DDT._PRESSHOLDMARGIN = 18;     // px de tolerancia por temblor del dedo antes de cancelar
+        }
     </script>
 
     <script>
