@@ -32,22 +32,22 @@
         .presentation-mode table { border-collapse: collapse !important; border: 2px solid #000; }
         .presentation-mode th, .presentation-mode td { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; }
         .presentation-mode td:first-child, .presentation-mode th:first-child { position: static; box-shadow: none; font-size: 13px; }
-        .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 11px; }
+        .presentation-mode .assigned-shift { border: 1px solid #000 !important; box-shadow: none !important; padding: 4px !important; pointer-events: none !important; font-size: 13px; }
         /* DOBLE TURNO COMPACTO: solo visualización de Presentación */
         .presentation-mode .assigned-shift.compact-double-shift {
             padding: 1px 3px !important;
             margin: 0.5px 0 !important;
             min-height: 0 !important;
             height: auto !important;
-            line-height: 1.1 !important;
-            font-size: 9.5px !important;
+            line-height: 1.15 !important;
+            font-size: 11px !important;
             border-width: 1px !important;
             border-radius: 3px !important;
         }
         .presentation-mode .assigned-shift.compact-double-shift > div {
             padding-left: 1px !important;
             padding-right: 1px !important;
-            line-height: 1.1 !important;
+            line-height: 1.15 !important;
         }
 
         .presentation-mode .assigned-shift[data-novedad="true"] { background: #f3f4f6 !important; font-style: italic !important; color: #000 !important; }
@@ -118,21 +118,21 @@
         .thick-scrollbar::-webkit-scrollbar-thumb:active { background-color: #475569; }
 
         /* PALETA DE COLORES AMPLIADA */
-        .bg-pastel-blue { background-color: #BFDBFE; color: #1e3a8a; }
-        .bg-pastel-pink { background-color: #FBCFE8; color: #831843; }
-        .bg-pastel-yellow { background-color: #FEF08A; color: #713f12; }
-        .bg-pastel-purple { background-color: #E9D5FF; color: #581c87; }
-        .bg-pastel-orange { background-color: #FED7AA; color: #7c2d12; }
-        .bg-pastel-green { background-color: #BBF7D0; color: #14532d; } 
-        .bg-pastel-gray { background-color: #F3F4F6; color: #1f2937; }
-        .bg-corp-blue { background-color: #2563EB; color: #ffffff; }
-        .bg-corp-emerald { background-color: #059669; color: #ffffff; }
-        .bg-corp-amber { background-color: #D97706; color: #ffffff; }
-        .bg-corp-rose { background-color: #E11D48; color: #ffffff; }
-        .bg-corp-indigo { background-color: #4F46E5; color: #ffffff; }
-        .bg-corp-teal { background-color: #0D9488; color: #ffffff; }
+        .bg-pastel-blue { background-color: #1E88FF; color: #ffffff; }
+        .bg-pastel-pink { background-color: #FF2D95; color: #ffffff; }
+        .bg-pastel-yellow { background-color: #FFD500; color: #1a1a1a; }
+        .bg-pastel-purple { background-color: #A335F0; color: #ffffff; }
+        .bg-pastel-orange { background-color: #FF7A00; color: #ffffff; }
+        .bg-pastel-green { background-color: #22C55E; color: #ffffff; }
+        .bg-pastel-gray { background-color: #94A3B8; color: #0f172a; }
+        .bg-corp-blue { background-color: #0044CC; color: #ffffff; }
+        .bg-corp-emerald { background-color: #00875A; color: #ffffff; }
+        .bg-corp-amber { background-color: #E6A800; color: #1a1a1a; }
+        .bg-corp-rose { background-color: #E4003A; color: #ffffff; }
+        .bg-corp-indigo { background-color: #3D2FFF; color: #ffffff; }
+        .bg-corp-teal { background-color: #00BFAE; color: #052e2b; }
         .bg-corp-slate { background-color: #334155; color: #ffffff; }
-        .bg-corp-purple { background-color: #7C3AED; color: #ffffff; }
+        .bg-corp-purple { background-color: #7A0BC0; color: #ffffff; }
         /* AUTENTICACIÓN / PWA */
         body.auth-locked > *:not(#auth-screen) { visibility: hidden !important; }
         #auth-screen { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(135deg,#eff6ff 0%,#f8fafc 55%,#ecfdf5 100%); }
@@ -518,21 +518,21 @@
         ];
 
         const listaColoresDisponibles = [
-            { id: 'bg-pastel-blue', label: 'Azul Pastel', class: 'bg-pastel-blue' },
-            { id: 'bg-pastel-pink', label: 'Rosa Pastel', class: 'bg-pastel-pink' },
-            { id: 'bg-pastel-yellow', label: 'Amarillo Pastel', class: 'bg-pastel-yellow' },
-            { id: 'bg-pastel-purple', label: 'Morado Pastel', class: 'bg-pastel-purple' },
-            { id: 'bg-pastel-orange', label: 'Naranja Pastel', class: 'bg-pastel-orange' },
-            { id: 'bg-pastel-green', label: 'Verde Pastel', class: 'bg-pastel-green' },
-            { id: 'bg-pastel-gray', label: 'Gris Pastel', class: 'bg-pastel-gray' },
-            { id: 'bg-corp-blue', label: 'Azul Corporativo', class: 'bg-corp-blue' },
-            { id: 'bg-corp-emerald', label: 'Verde Corporativo', class: 'bg-corp-emerald' },
-            { id: 'bg-corp-amber', label: 'Ámbar Intenso', class: 'bg-corp-amber' },
-            { id: 'bg-corp-rose', label: 'Rosa Intenso', class: 'bg-corp-rose' },
-            { id: 'bg-corp-indigo', label: 'Índigo', class: 'bg-corp-indigo' },
-            { id: 'bg-corp-teal', label: 'Teal', class: 'bg-corp-teal' },
+            { id: 'bg-pastel-blue', label: 'Azul Brillante', class: 'bg-pastel-blue' },
+            { id: 'bg-pastel-pink', label: 'Rosa Fucsia', class: 'bg-pastel-pink' },
+            { id: 'bg-pastel-yellow', label: 'Amarillo Taxi', class: 'bg-pastel-yellow' },
+            { id: 'bg-pastel-purple', label: 'Violeta', class: 'bg-pastel-purple' },
+            { id: 'bg-pastel-orange', label: 'Naranja', class: 'bg-pastel-orange' },
+            { id: 'bg-pastel-green', label: 'Verde Brillante', class: 'bg-pastel-green' },
+            { id: 'bg-pastel-gray', label: 'Gris Neutro', class: 'bg-pastel-gray' },
+            { id: 'bg-corp-blue', label: 'Azul Rey', class: 'bg-corp-blue' },
+            { id: 'bg-corp-emerald', label: 'Verde Esmeralda', class: 'bg-corp-emerald' },
+            { id: 'bg-corp-amber', label: 'Ámbar Dorado', class: 'bg-corp-amber' },
+            { id: 'bg-corp-rose', label: 'Rojo Coral', class: 'bg-corp-rose' },
+            { id: 'bg-corp-indigo', label: 'Índigo Eléctrico', class: 'bg-corp-indigo' },
+            { id: 'bg-corp-teal', label: 'Turquesa', class: 'bg-corp-teal' },
             { id: 'bg-corp-slate', label: 'Gris Oscuro', class: 'bg-corp-slate' },
-            { id: 'bg-corp-purple', label: 'Morado Oscuro', class: 'bg-corp-purple' }
+            { id: 'bg-corp-purple', label: 'Morado Berenjena', class: 'bg-corp-purple' }
         ];
 
         // Mapa de valores hex reales para cada clase de color.
@@ -541,21 +541,21 @@
         // igual en la malla y en Modo Presentación, sin depender del orden de
         // las reglas CSS ni de reprocesamientos del DOM (Tailwind CDN, html2canvas, etc.).
         const COLOR_HEX_MAP = {
-            'bg-pastel-blue':   { bg: '#BFDBFE', text: '#1e3a8a' },
-            'bg-pastel-pink':   { bg: '#FBCFE8', text: '#831843' },
-            'bg-pastel-yellow': { bg: '#FEF08A', text: '#713f12' },
-            'bg-pastel-purple': { bg: '#E9D5FF', text: '#581c87' },
-            'bg-pastel-orange': { bg: '#FED7AA', text: '#7c2d12' },
-            'bg-pastel-green':  { bg: '#BBF7D0', text: '#14532d' },
-            'bg-pastel-gray':   { bg: '#F3F4F6', text: '#1f2937' },
-            'bg-corp-blue':     { bg: '#2563EB', text: '#ffffff' },
-            'bg-corp-emerald':  { bg: '#059669', text: '#ffffff' },
-            'bg-corp-amber':    { bg: '#D97706', text: '#ffffff' },
-            'bg-corp-rose':     { bg: '#E11D48', text: '#ffffff' },
-            'bg-corp-indigo':   { bg: '#4F46E5', text: '#ffffff' },
-            'bg-corp-teal':     { bg: '#0D9488', text: '#ffffff' },
+            'bg-pastel-blue':   { bg: '#1E88FF', text: '#ffffff' },
+            'bg-pastel-pink':   { bg: '#FF2D95', text: '#ffffff' },
+            'bg-pastel-yellow': { bg: '#FFD500', text: '#1a1a1a' },
+            'bg-pastel-purple': { bg: '#A335F0', text: '#ffffff' },
+            'bg-pastel-orange': { bg: '#FF7A00', text: '#ffffff' },
+            'bg-pastel-green':  { bg: '#22C55E', text: '#ffffff' },
+            'bg-pastel-gray':   { bg: '#94A3B8', text: '#0f172a' },
+            'bg-corp-blue':     { bg: '#0044CC', text: '#ffffff' },
+            'bg-corp-emerald':  { bg: '#00875A', text: '#ffffff' },
+            'bg-corp-amber':    { bg: '#E6A800', text: '#1a1a1a' },
+            'bg-corp-rose':     { bg: '#E4003A', text: '#ffffff' },
+            'bg-corp-indigo':   { bg: '#3D2FFF', text: '#ffffff' },
+            'bg-corp-teal':     { bg: '#00BFAE', text: '#052e2b' },
             'bg-corp-slate':    { bg: '#334155', text: '#ffffff' },
-            'bg-corp-purple':   { bg: '#7C3AED', text: '#ffffff' },
+            'bg-corp-purple':   { bg: '#7A0BC0', text: '#ffffff' },
             'bg-white':         { bg: '#ffffff', text: '#1f2937' }
         };
 
@@ -880,7 +880,7 @@
                 const block = document.createElement('div');
                 const textoVisual = isNov ? fav.baseDesc : limpiarTextoTurno(fav.desc);
 
-                block.className = `shift-block px-2 py-1 md:px-3 md:py-1 rounded text-[10px] md:text-xs border border-gray-400 shadow-sm cursor-pointer max-w-max h-max font-bold ${fav.colorCls || 'bg-white'}`;
+                block.className = `shift-block px-2 py-1 md:px-3 md:py-1 rounded text-[11px] md:text-sm border border-gray-400 shadow-sm cursor-pointer max-w-max h-max font-bold ${fav.colorCls || 'bg-white'}`;
                 block.draggable = true;
                 block.dataset.favId = fav.id;
                 block.dataset.code = fav.codigo;
@@ -1216,7 +1216,7 @@
             div.id = uniqueId;
             
             const isNov = isNovedad(data.desc);
-            div.className = `assigned-shift rounded text-[9px] md:text-[10px] text-center border border-gray-400 font-bold shadow-sm cursor-pointer ${data.colorCls || 'bg-white'}`;
+            div.className = `assigned-shift rounded text-[11px] md:text-[13px] text-center border border-gray-400 font-bold shadow-sm cursor-pointer ${data.colorCls || 'bg-white'}`;
             div.dataset.code = data.codigo || "";
             div.dataset.desc = data.desc;
             div.dataset.baseDesc = data.baseDesc || data.desc; 
