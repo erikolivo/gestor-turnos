@@ -73,10 +73,18 @@
         .presentation-mode.monochrome-report .assigned-shift { background: #ffffff !important; color: #000000 !important; border: 1px solid #000 !important; }
 
         @media print {
-            #topbar, #sidebar, #presentation-actions, #btn-exit-presentation { display: none !important; }
+            #topbar, #sidebar, #presentation-actions, #btn-exit-presentation, #backup-actions-bar, #grid-actions-bar { display: none !important; }
             @page { size: landscape; margin: 1cm; }
-            body { margin: 0; padding: 0; background: #fff; }
-            .presentation-mode .grid-container { padding-bottom: 0 !important; }
+            body { margin: 0; padding: 0; background: #fff; height: auto !important; overflow: visible !important; }
+            #main-content-wrapper { overflow: visible !important; height: auto !important; }
+            .presentation-mode .grid-container { padding-bottom: 0 !important; overflow: visible !important; height: auto !important; max-height: none !important; }
+            /* Fuerza a que se impriman los colores de fondo, sin depender de que el usuario
+               active manualmente "Imprimir gráficos de fondo" en el diálogo de impresión. */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
         }
 
         table { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
@@ -1619,8 +1627,59 @@
             }
         }
 
+        // ================== EXPANSIÓN TEMPORAL PARA CAPTURA COMPLETA ==================
+        // En vez de clonar la malla a un contenedor oculto (poco confiable en algunos
+        // navegadores móviles), agrandamos la malla REAL a su tamaño natural completo
+        // (sin scroll, sin recorte) justo antes de capturar/imprimir, y la devolvemos
+        // a su estado normal apenas termina. Se usa tanto para "Descargar Imagen" como
+        // para "Imprimir / PDF".
+        function expandirParaCaptura() {
+            const capture = document.getElementById('capture-area');
+            const wrapper = document.getElementById('main-content-wrapper');
+            const estadoPrevio = {
+                bodyOverflow: document.body.style.overflow,
+                bodyHeight: document.body.style.height,
+                wrapperOverflow: wrapper ? wrapper.style.overflow : '',
+                captureOverflow: capture.style.overflow,
+                captureHeight: capture.style.height,
+                captureMaxHeight: capture.style.maxHeight,
+                scrollX: window.scrollX,
+                scrollY: window.scrollY
+            };
+            document.body.style.overflow = 'visible';
+            document.body.style.height = 'auto';
+            if (wrapper) wrapper.style.overflow = 'visible';
+            capture.style.overflow = 'visible';
+            capture.style.height = 'auto';
+            capture.style.maxHeight = 'none';
+            window.scrollTo(0, 0);
+            return estadoPrevio;
+        }
+
+        function restaurarDespuesDeCaptura(estadoPrevio) {
+            const capture = document.getElementById('capture-area');
+            const wrapper = document.getElementById('main-content-wrapper');
+            document.body.style.overflow = estadoPrevio.bodyOverflow;
+            document.body.style.height = estadoPrevio.bodyHeight;
+            if (wrapper) wrapper.style.overflow = estadoPrevio.wrapperOverflow;
+            capture.style.overflow = estadoPrevio.captureOverflow;
+            capture.style.height = estadoPrevio.captureHeight;
+            capture.style.maxHeight = estadoPrevio.captureMaxHeight;
+            window.scrollTo(estadoPrevio.scrollX, estadoPrevio.scrollY);
+        }
+
         document.getElementById('btn-print-pdf').addEventListener('click', () => {
-            window.print();
+            const estado = expandirParaCaptura();
+            let yaRestaurado = false;
+            const restaurar = () => {
+                if (yaRestaurado) return;
+                yaRestaurado = true;
+                restaurarDespuesDeCaptura(estado);
+                window.removeEventListener('afterprint', restaurar);
+            };
+            window.addEventListener('afterprint', restaurar);
+            setTimeout(() => { window.print(); }, 60);
+            setTimeout(restaurar, 8000); // salvaguarda si el navegador no dispara 'afterprint'
         });
 
         document.getElementById('btn-download-image').addEventListener('click', async () => {
@@ -1631,92 +1690,36 @@
                 didOpen: () => { Swal.showLoading(); }
             });
 
-            let exportHost = null;
+            let estadoPrevio = null;
 
             try {
                 const source = document.getElementById('capture-area');
                 if (!source) throw new Error('No existe #capture-area.');
 
+                /*
+                 * Estrategia nueva: en vez de clonar la malla a un contenedor oculto
+                 * (que en algunos navegadores móviles se recortaba al tamaño de
+                 * pantalla), agrandamos la malla REAL a su tamaño natural completo
+                 * -sin scroll ni recorte- justo antes de capturar. El modal de
+                 * SweetAlert2 ya cubre toda la pantalla mientras tanto.
+                 */
+                estadoPrevio = expandirParaCaptura();
+
+                await new Promise(resolve => setTimeout(resolve, 100));
                 await new Promise(resolve =>
                     requestAnimationFrame(() =>
                         requestAnimationFrame(resolve)
                     )
                 );
 
-                /*
-                 * No capturamos el viewport visible.
-                 * Creamos una copia independiente de TODA la presentación
-                 * y le quitamos las restricciones de flex/overflow/altura.
-                 */
-                const sourceRect = source.getBoundingClientRect();
-                const sourceWidth = Math.max(
-                    source.scrollWidth,
-                    source.clientWidth,
-                    Math.ceil(sourceRect.width)
-                );
-
-                /*
-                 * IMPORTANTE: html2canvas trata los elementos con position:fixed o
-                 * muy alejados del documento (izquierda -100000px) de forma especial
-                 * al clonar la página internamente, y en varios navegadores móviles
-                 * termina recortando la captura al tamaño de la pantalla visible.
-                 * Solución: insertamos la copia como un elemento NORMAL (sin position
-                 * especial, sin z-index negativo), y confiamos en que el modal de
-                 * SweetAlert2 ("Generando Imagen...") ya está cubriendo toda la
-                 * pantalla con su fondo oscuro (z-index muy alto) mientras se genera,
-                 * así el usuario nunca llega a ver esta copia en pantalla.
-                 */
-                exportHost = document.createElement('div');
-                exportHost.id = 'export-host-full';
-                exportHost.style.width = sourceWidth + 'px';
-                exportHost.style.height = 'auto';
-                exportHost.style.background = '#ffffff';
-                exportHost.style.padding = '16px';
-                exportHost.style.boxSizing = 'border-box';
-                exportHost.style.margin = '0';
-
-                const clone = source.cloneNode(true);
-                clone.removeAttribute('id');
-                clone.style.display = 'block';
-                clone.style.position = 'relative';
-                clone.style.width = '100%';
-                clone.style.height = 'auto';
-                clone.style.minHeight = '0';
-                clone.style.maxHeight = 'none';
-                clone.style.flex = 'none';
-                clone.style.overflow = 'visible';
-                clone.style.padding = '0';
-                clone.style.margin = '0';
-                clone.style.boxSizing = 'border-box';
-
-                const clonedTable = clone.querySelector('table');
-                if (clonedTable) {
-                    clonedTable.style.width = '100%';
-                    clonedTable.style.height = 'auto';
-                    clonedTable.style.maxHeight = 'none';
-                    clonedTable.style.overflow = 'visible';
-                    clonedTable.style.margin = '0';
-                }
-
-                // Se agrega al final del body, en flujo normal (detrás del modal de SweetAlert2).
-                document.body.appendChild(exportHost);
-                exportHost.appendChild(clone);
-
-                await new Promise(resolve => setTimeout(resolve, 80));
-                await new Promise(resolve =>
-                    requestAnimationFrame(() =>
-                        requestAnimationFrame(resolve)
-                    )
-                );
-
-                const exportWidth = Math.ceil(exportHost.scrollWidth);
-                const exportHeight = Math.ceil(exportHost.scrollHeight);
+                const exportWidth = Math.ceil(Math.max(source.scrollWidth, source.offsetWidth));
+                const exportHeight = Math.ceil(Math.max(source.scrollHeight, source.offsetHeight));
 
                 if (exportWidth < 10 || exportHeight < 10) {
                     throw new Error('Dimensiones inválidas de exportación.');
                 }
 
-                const canvas = await html2canvas(exportHost, {
+                const canvas = await html2canvas(source, {
                     backgroundColor: '#ffffff',
                     scale: Math.min(1.6, Math.max(1, window.devicePixelRatio || 1)),
                     useCORS: true,
@@ -1751,11 +1754,12 @@
                     'error'
                 );
             } finally {
-                if (exportHost && exportHost.parentNode) {
-                    exportHost.parentNode.removeChild(exportHost);
+                if (estadoPrevio) {
+                    restaurarDespuesDeCaptura(estadoPrevio);
                 }
             }
         });
+
 
         // --- HISTORIAL Y GUARDADO ---
         function capturarMallaActual() {
