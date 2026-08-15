@@ -25,7 +25,7 @@
         
         /* MODO PRESENTACIÓN (REPORTE CORPORATIVO) */
         .presentation-mode { background-color: #ffffff !important; }
-        .presentation-mode #topbar, .presentation-mode #btn-toggle-sidebar, .presentation-mode #grid-actions-bar { display: none !important; }
+        .presentation-mode #topbar, .presentation-mode #btn-toggle-sidebar, .presentation-mode #grid-actions-bar, .presentation-mode #backup-actions-bar { display: none !important; }
         .presentation-mode .grid-container { width: 100% !important; margin: 0 !important; padding: 0 !important; background: transparent; box-shadow: none; border: none; overflow: visible !important; }
         .presentation-mode #presentation-header { display: block !important; }
         .presentation-mode #presentation-footer-legend { display: block !important; }
@@ -331,6 +331,13 @@
                     <tbody id="grid-body">
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Exportar Excel con doble formato (oculto en Presentación) -->
+            <div id="backup-actions-bar" class="flex justify-end mt-2">
+                <button id="btn-respaldo-excel" class="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-100 font-bold text-xs shadow-sm flex items-center gap-1.5">
+                    📊 Descargar Excel (Farmacia + Biométrico)
+                </button>
             </div>
 
             <!-- Leyenda Automática de Tareas en Presentación -->
@@ -1781,6 +1788,242 @@
             };
             localStorage.setItem('farmacia_historial_v10', JSON.stringify(historialMallas));
         }
+
+        // ================== EXCEL DOBLE FORMATO (Farmacia + Biométrico) ==================
+        // Genera UN solo archivo .xlsx con 2 pestañas, ambas con el horario de la
+        // semana ACTUALMENTE visible en la malla (no toca el historial de otras semanas).
+
+        function argbColor(hex) {
+            const h = (hex || '#FFFFFF').replace('#', '').toUpperCase();
+            return 'FF' + h;
+        }
+
+        function obtenerNombreApellidoPrimero(nombreCompleto) {
+            // Igual que obtenerNombreCorto pero en orden Apellido + Nombre (para Malla Biométrico)
+            const capitalizar = (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+            const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+            if (partes.length >= 3) return capitalizar(partes[0]) + " " + capitalizar(partes[2]);
+            if (partes.length === 2) return capitalizar(partes[0]) + " " + capitalizar(partes[1]);
+            if (partes.length === 1) return capitalizar(partes[0]);
+            return nombreCompleto;
+        }
+
+        function formatMinutosHHMM(min) {
+            let m = ((Math.round(min / 30) * 30) % 1440 + 1440) % 1440;
+            let hh = Math.floor(m / 60);
+            let mm = m % 60;
+            return ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2);
+        }
+
+        // Regla FIJA simple: break de 30 min centrado en la mitad del turno,
+        // solo para turnos de más de 6 horas. Redondeado a la media hora más cercana.
+        function calcularBreakSimple(descTurno) {
+            const t = parseTime(descTurno);
+            if (!t) return null;
+            const duracionH = (t.end - t.start) / 60;
+            if (duracionH <= 6) return null;
+            const medioMin = (t.start + t.end) / 2;
+            const inicioBreak = medioMin - 15;
+            const finBreak = inicioBreak + 30;
+            return `${formatMinutosHHMM(inicioBreak)} - ${formatMinutosHHMM(finBreak)}`;
+        }
+
+        function formatHorasNumero(h) {
+            if (Number.isInteger(h)) return String(h);
+            return h.toFixed(1).replace('.', ',');
+        }
+
+        async function generarExcelDobleFormato() {
+            const isoLunes = document.getElementById('monday-date').value;
+            if (!isoLunes) { Swal.fire('Atención', 'Selecciona primero la fecha del lunes.', 'warning'); return; }
+
+            Swal.fire({ title: 'Generando Excel...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+            try {
+                const mondayDate = new Date(isoLunes + "T12:00:00Z");
+                const NOMBRES_DIA = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO'];
+                const dias = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(mondayDate);
+                    d.setDate(mondayDate.getDate() + i);
+                    const fechaStr = ("0" + d.getDate()).slice(-2) + "/" + ("0" + (d.getMonth() + 1)).slice(-2) + "/" + d.getFullYear();
+                    dias.push({ nombre: NOMBRES_DIA[i], fecha: fechaStr });
+                }
+
+                // Leer directamente de la malla visible en pantalla (misma fuente que "Subir Biométrico")
+                const filas = Array.from(document.querySelectorAll('#grid-body tr')).map((tr, rowIndex) => {
+                    const emp = empleados[rowIndex];
+                    const celdas = tr.querySelectorAll('td.droppable-cell');
+                    const diasData = [];
+                    for (let c = 0; c < 7; c++) {
+                        const shifts = celdas[c] ? Array.from(celdas[c].querySelectorAll('.assigned-shift')).map(b => ({
+                            desc: b.dataset.desc, baseDesc: b.dataset.baseDesc || b.dataset.desc, colorCls: b.dataset.colorCls || 'bg-white'
+                        })) : [];
+                        diasData.push(shifts);
+                    }
+                    return { emp, diasData };
+                });
+
+                const wb = new ExcelJS.Workbook();
+
+                // ---------- PESTAÑA 1: FORMATO FARMACIA (con colores) ----------
+                const ws1 = wb.addWorksheet('Formato Farmacia');
+                ws1.getColumn(1).width = 22;
+                for (let d = 0; d < 7; d++) {
+                    ws1.getColumn(2 + d * 2).width = 16;
+                    ws1.getColumn(3 + d * 2).width = 8;
+                }
+                ws1.getColumn(16).width = 9;
+
+                const headerFill1 = { type: 'pattern', pattern: 'solid', fgColor: { argb: argbColor('#1E88FF') } };
+                const thinBorder = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+
+                const c1nombre = ws1.getCell(1, 1);
+                c1nombre.value = 'NOMBRE'; c1nombre.fill = headerFill1;
+                c1nombre.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                c1nombre.alignment = { horizontal: 'center', vertical: 'middle' };
+                c1nombre.border = thinBorder;
+
+                dias.forEach((dia, i) => {
+                    const col = 2 + i * 2;
+                    ws1.mergeCells(1, col, 1, col + 1);
+                    const cell = ws1.getCell(1, col);
+                    cell.value = `${dia.nombre}\n${dia.fecha}`;
+                    cell.fill = headerFill1;
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    for (let cc = col; cc <= col + 1; cc++) ws1.getCell(1, cc).border = thinBorder;
+                });
+
+                const cTotal1 = ws1.getCell(1, 16);
+                cTotal1.value = 'TOTAL'; cTotal1.fill = headerFill1;
+                cTotal1.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                cTotal1.alignment = { horizontal: 'center', vertical: 'middle' };
+                cTotal1.border = thinBorder;
+                ws1.getRow(1).height = 28;
+
+                filas.forEach((fila, rowIndex) => {
+                    const excelRow = rowIndex + 2;
+                    const nombreCell = ws1.getCell(excelRow, 1);
+                    nombreCell.value = obtenerNombreCorto(fila.emp.nombre).toUpperCase();
+                    nombreCell.font = { bold: true };
+                    nombreCell.alignment = { vertical: 'middle' };
+                    nombreCell.border = thinBorder;
+
+                    let totalSemana = 0;
+                    fila.diasData.forEach((shifts, d) => {
+                        const colHorario = 2 + d * 2;
+                        const colHoras = 3 + d * 2;
+                        const cellH = ws1.getCell(excelRow, colHorario);
+                        const cellN = ws1.getCell(excelRow, colHoras);
+                        cellH.border = thinBorder; cellN.border = thinBorder;
+                        cellH.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                        cellN.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                        if (shifts.length > 0) {
+                            const esNov = isNovedad(shifts[0].desc);
+                            const textos = shifts.map(s => esNov ? s.desc : limpiarTextoTurno(s.desc));
+                            cellH.value = textos.join('\n');
+                            const colorInfo = COLOR_HEX_MAP[shifts[0].colorCls] || COLOR_HEX_MAP['bg-white'];
+                            if (shifts[0].colorCls && shifts[0].colorCls !== 'bg-white') {
+                                cellH.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argbColor(colorInfo.bg) } };
+                                cellH.font = { bold: true, color: { argb: argbColor(colorInfo.text) } };
+                            } else {
+                                cellH.font = { bold: true };
+                            }
+                            let horasDia = 0;
+                            shifts.forEach(s => {
+                                let dur = getShiftDuration(s.desc);
+                                if (dur > 6) dur -= 0.5;
+                                horasDia += dur;
+                            });
+                            cellN.value = formatHorasNumero(horasDia);
+                            cellN.font = { bold: true };
+                            totalSemana += horasDia;
+                        }
+                    });
+
+                    const cellTotal = ws1.getCell(excelRow, 16);
+                    cellTotal.value = formatHorasNumero(totalSemana);
+                    cellTotal.font = { bold: true };
+                    cellTotal.alignment = { horizontal: 'center', vertical: 'middle' };
+                    cellTotal.border = thinBorder;
+                    ws1.getRow(excelRow).height = 26;
+                });
+
+                // ---------- PESTAÑA 2: MALLA BIOMÉTRICO (sin colores, con break) ----------
+                const ws2 = wb.addWorksheet('Malla Biometrico');
+                ws2.getColumn(1).width = 20;
+                for (let d = 0; d < 7; d++) ws2.getColumn(2 + d).width = 16;
+
+                const headerFill2 = { type: 'pattern', pattern: 'solid', fgColor: { argb: argbColor('#1E88FF') } };
+
+                const t2trab = ws2.getCell(1, 1);
+                t2trab.value = 'Trabajador'; t2trab.fill = headerFill2;
+                t2trab.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                t2trab.alignment = { horizontal: 'center', vertical: 'middle' };
+                t2trab.border = thinBorder;
+
+                dias.forEach((dia, i) => {
+                    const cell = ws2.getCell(1, 2 + i);
+                    cell.value = `${dia.nombre}\n${dia.fecha}`;
+                    cell.fill = headerFill2;
+                    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cell.border = thinBorder;
+                });
+                ws2.getRow(1).height = 28;
+
+                filas.forEach((fila, rowIndex) => {
+                    const excelRow = rowIndex + 2;
+                    const nombreCell = ws2.getCell(excelRow, 1);
+                    nombreCell.value = obtenerNombreApellidoPrimero(fila.emp.nombre);
+                    nombreCell.font = { bold: true };
+                    nombreCell.alignment = { vertical: 'middle' };
+                    nombreCell.border = thinBorder;
+
+                    fila.diasData.forEach((shifts, d) => {
+                        const cell = ws2.getCell(excelRow, 2 + d);
+                        cell.border = thinBorder;
+                        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+                        if (shifts.length === 0) { return; }
+                        const esNov = isNovedad(shifts[0].desc);
+                        if (esNov) {
+                            cell.value = shifts[0].desc.charAt(0) + shifts[0].desc.slice(1).toLowerCase();
+                            cell.font = { italic: true, color: { argb: 'FF888888' } };
+                        } else {
+                            const lineas = shifts.map(s => {
+                                const texto = limpiarTextoTurno(s.desc);
+                                const brk = calcularBreakSimple(s.desc);
+                                return brk ? `${texto}\nBreak ${brk}` : texto;
+                            });
+                            cell.value = lineas.join('\n');
+                            cell.font = { bold: false };
+                        }
+                    });
+                    ws2.getRow(excelRow).height = 40;
+                });
+
+                const buffer = await wb.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Horarios_${isoLunes}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                Swal.fire({ icon: 'success', title: '¡Listo!', text: 'Se descargó el Excel con las pestañas "Formato Farmacia" y "Malla Biometrico".', confirmButtonColor: '#10b981' });
+            } catch (error) {
+                console.error(error);
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo generar el Excel.', confirmButtonColor: '#ef4444' });
+            }
+        }
+
+        document.getElementById('btn-respaldo-excel').addEventListener('click', generarExcelDobleFormato);
 
         document.getElementById('btn-guardar-semana').addEventListener('click', () => {
             toolsDropdown.classList.add('hidden'); toolsArrow.style.transform = 'rotate(0deg)';
